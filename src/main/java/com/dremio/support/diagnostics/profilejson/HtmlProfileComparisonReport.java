@@ -13,20 +13,6 @@
  */
 package com.dremio.support.diagnostics.profilejson;
 
-import static com.dremio.support.diagnostics.shared.HtmlTableDataColumn.col;
-
-import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraph;
-import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraphParser;
-import com.dremio.support.diagnostics.profilejson.singlefile.GraphWriter;
-import com.dremio.support.diagnostics.shared.HtmlTableBuilder;
-import com.dremio.support.diagnostics.shared.HtmlTableDataColumn;
-import com.dremio.support.diagnostics.shared.Human;
-import com.dremio.support.diagnostics.shared.JsLibraryTextProvider;
-import com.dremio.support.diagnostics.shared.Report;
-import com.dremio.support.diagnostics.shared.dto.profilejson.FragmentProfile;
-import com.dremio.support.diagnostics.shared.dto.profilejson.MinorFragmentProfile;
-import com.dremio.support.diagnostics.shared.dto.profilejson.OperatorProfile;
-import com.dremio.support.diagnostics.shared.dto.profilejson.ProfileJSON;
 import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -34,6 +20,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+
+import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraph;
+import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraphParser;
+import com.dremio.support.diagnostics.profilejson.singlefile.GraphWriter;
+import com.dremio.support.diagnostics.shared.HtmlTableBuilder;
+import com.dremio.support.diagnostics.shared.HtmlTableDataColumn;
+import static com.dremio.support.diagnostics.shared.HtmlTableDataColumn.col;
+import com.dremio.support.diagnostics.shared.Human;
+import com.dremio.support.diagnostics.shared.JsLibraryTextProvider;
+import com.dremio.support.diagnostics.shared.Report;
+import com.dremio.support.diagnostics.shared.dto.profilejson.FragmentProfile;
+import com.dremio.support.diagnostics.shared.dto.profilejson.MinorFragmentProfile;
+import com.dremio.support.diagnostics.shared.dto.profilejson.OperatorProfile;
+import com.dremio.support.diagnostics.shared.dto.profilejson.ProfileJSON;
 
 public class HtmlProfileComparisonReport implements Report {
 
@@ -95,9 +95,7 @@ public class HtmlProfileComparisonReport implements Report {
     // print out same summary that is available in console report
 
     final String summary =
-        "<div style=\"white-space:pre-wrap;font-family:monospace\">"
-            + this.displayDiff()
-            + "</div>";
+        "<div class=\"bg-white rounded-lg shadow-sm p-6 mb-6\">" + this.displayDiff() + "</div>";
     final TraceData profile2TraceData = convertToPhaseThreads(this.parsed2);
     final String profile2PhaseProcessTrace =
         writeTrace(
@@ -188,47 +186,87 @@ public class HtmlProfileComparisonReport implements Report {
           convertToRelGraphParser.parseConvertToRel(this.parsed);
       if (convertToRelProfile1 != null) {
         convertToRel1 =
-            "<h2>Convert To Rel Profile 1</h2>"
-                + new GraphWriter().writeMermaid(convertToRelProfile1.getConvertToRelTree());
+            "<div class=\"bg-white rounded-lg shadow-sm p-6\"><h2 class=\"text-xl font-semibold"
+                + " text-gray-800 mb-4\">Convert To Rel Profile 1</h2>"
+                + new GraphWriter().writeMermaid(convertToRelProfile1.getConvertToRelTree())
+                + "</div>";
       } else {
-        convertToRel1 = "<h2>Convert To Rel Profile 2</h2><p>No Convert To Rel Found</p>";
+        convertToRel1 =
+            "<div class=\"bg-white rounded-lg shadow-sm p-6\"><h2 class=\"text-xl font-semibold"
+                + " text-gray-800 mb-4\">Convert To Rel Profile 1</h2><p class=\"text-gray-600\">No"
+                + " Convert To Rel Found</p></div>";
       }
 
       final ConvertToRelGraph convertToRelProfile2 =
           convertToRelGraphParser.parseConvertToRel(this.parsed2);
       if (convertToRelProfile2 != null) {
         convertToRel2 =
-            "<h2>Convert To Rel Profile 2</h2>"
-                + new GraphWriter().writeMermaid(convertToRelProfile2.getConvertToRelTree());
+            "<div class=\"bg-white rounded-lg shadow-sm p-6\"><h2 class=\"text-xl font-semibold"
+                + " text-gray-800 mb-4\">Convert To Rel Profile 2</h2>"
+                + new GraphWriter().writeMermaid(convertToRelProfile2.getConvertToRelTree())
+                + "</div>";
       } else {
-        convertToRel2 = "<h2>Convert To Rel Profile 2</h2><p>No Convert To Rel Found</p>";
+        convertToRel2 =
+            "<div class=\"bg-white rounded-lg shadow-sm p-6\"><h2 class=\"text-xl font-semibold"
+                + " text-gray-800 mb-4\">Convert To Rel Profile 2</h2><p class=\"text-gray-600\">No"
+                + " Convert To Rel Found</p></div>";
       }
     } else {
       convertToRel1 = "";
       convertToRel2 = "";
     }
     return "<!doctype html>\n"
-        + "<html   lang=\"en\">\n"
+        + "<html lang=\"en\">\n"
         + "<head>\n"
         + "  <meta charset=\"utf-8\">\n"
         + "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
         + "  <title>Profile Comparison Report</title>\n"
-        + " <style> \n"
-        + "  .mermaidTooltip { \n"
-        + "    position: absolute; \n"
-        + "    text-align: center; \n"
-        + "    max-width: 200px; \n"
-        + "    padding: 2px; \n"
-        + "    font-family: 'trebuchet ms', verdana, arial; \n"
-        + "    font-size: 12px; \n"
-        + "    background: #ffffde;\n"
-        + "    border: 1px solid #aaaa33;\n"
-        + "    border-radius: 2px;\n"
-        + "    pointer-events: none;\n"
-        + "    z-index: 100; \n"
-        + "}\n"
-        + " </style>\n"
-        + "  <meta name\"description\" content=\"report for "
+        + "  <!-- Tailwind CSS -->\n"
+        + "  <script src=\"https://cdn.tailwindcss.com\"></script>\n"
+        + "  <!-- Font Awesome -->\n"
+        + "  <link rel=\"stylesheet\""
+        + " href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\">\n"
+        + "  <style>\n"
+        + "    /* Custom styling for tables */\n"
+        + "    .comparison-table {\n"
+        + "      @apply w-full text-sm text-left text-gray-700;\n"
+        + "    }\n"
+        + "    .comparison-table thead {\n"
+        + "      @apply text-xs text-gray-700 uppercase bg-gray-100;\n"
+        + "    }\n"
+        + "    .comparison-table th {\n"
+        + "      @apply px-6 py-3 font-medium;\n"
+        + "    }\n"
+        + "    .comparison-table td {\n"
+        + "      @apply px-6 py-4 border-b border-gray-200;\n"
+        + "    }\n"
+        + "    .comparison-table tbody tr:hover {\n"
+        + "      @apply bg-gray-50;\n"
+        + "    }\n"
+        + "    .comparison-table tbody tr:nth-child(even) {\n"
+        + "      @apply bg-gray-50/50;\n"
+        + "    }\n"
+        + "    /* Plotly chart containers */\n"
+        + "    .chart-container {\n"
+        + "      @apply bg-white rounded-lg shadow-sm p-6 mb-6;\n"
+        + "    }\n"
+        + "    /* Mermaid diagram styling */\n"
+        + "    .mermaidTooltip {\n"
+        + "      position: absolute;\n"
+        + "      text-align: center;\n"
+        + "      max-width: 200px;\n"
+        + "      padding: 8px;\n"
+        + "      font-family: 'Inter', sans-serif;\n"
+        + "      font-size: 12px;\n"
+        + "      background: #fff;\n"
+        + "      border: 1px solid #e5e7eb;\n"
+        + "      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);\n"
+        + "      border-radius: 6px;\n"
+        + "      pointer-events: none;\n"
+        + "      z-index: 100;\n"
+        + "    }\n"
+        + "  </style>\n"
+        + "  <meta name=\"description\" content=\"report for "
         + this.getTitle()
         + " \">\n"
         + "  <meta name=\"author\" content=\"dremio\">\n"
@@ -236,7 +274,8 @@ public class HtmlProfileComparisonReport implements Report {
         + this.getTitle()
         + "\">\n"
         + "  <meta property=\"og:type\" content=\"website\">\n"
-        + "  <meta property=\"og:description\" content=\"plotly generated graphs\">\n"
+        + "  <meta property=\"og:description\" content=\"Profile comparison analysis with"
+        + " visualizations\">\n"
         + "<script>"
         + jsLibraryTextProvider.getPlotlyJsText()
         + "</script>\n"
@@ -249,36 +288,67 @@ public class HtmlProfileComparisonReport implements Report {
         + "<script>\n"
         + jsLibraryTextProvider.getFilterTableText()
         + "</script>\n"
-        + "<script>\n"
-        + jsLibraryTextProvider.getFilterTableText()
-        + "</script>\n"
         + "<style>\n"
         + jsLibraryTextProvider.getSortableCSSText()
         + "</style>\n"
-        + """
-          <style>
-            table, th, td {
-              border: 1px dotted black;
-            }
-          </style>
-          """
         + "</head>\n"
-        + "<body>"
+        + "<body class=\"bg-gray-50\">\n"
+        + "  <div class=\"min-h-screen py-8\">\n"
+        + "    <div class=\"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8\">\n"
+        + "      <!-- Header -->\n"
+        + "      <div class=\"bg-white rounded-lg shadow-sm p-6 mb-8\">\n"
+        + "        <div class=\"flex items-center\">\n"
+        + "          <div class=\"w-12 h-12 bg-indigo-100 rounded-xl flex items-center"
+        + " justify-center mr-4\">\n"
+        + "            <i class=\"fas fa-code-compare text-indigo-600 text-xl\"></i>\n"
+        + "          </div>\n"
+        + "          <div>\n"
+        + "            <h1 class=\"text-2xl font-bold text-gray-800\">Profile Comparison"
+        + " Report</h1>\n"
+        + "            <p class=\"text-gray-600 mt-1\">Detailed analysis and comparison of two"
+        + " profile.json files</p>\n"
+        + "          </div>\n"
+        + "        </div>\n"
+        + "      </div>\n"
+        + "      \n"
+        + "      <!-- Differences Summary -->\n"
+        + "      <div class=\"mb-8\">\n"
+        + "        <h2 class=\"text-xl font-semibold text-gray-800 mb-4 flex items-center\">\n"
+        + "          <i class=\"fas fa-list-check mr-2 text-gray-600\"></i>\n"
+        + "          Plan Differences Summary\n"
+        + "        </h2>\n"
         + summary
+        + "      </div>\n"
+        + "      \n"
+        + "      <!-- Charts Section -->\n"
+        + "      <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8\">\n"
+        + "        <div class=\"chart-container\">\n"
         + phasesPlot
+        + "        </div>\n"
+        + "        <div class=\"chart-container\">\n"
         + operatorPlot
+        + "        </div>\n"
+        + "      </div>\n"
+        + "      \n"
+        + "      <!-- Timeline Charts -->\n"
+        + "      <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8\">\n"
+        + "        <div class=\"chart-container\">\n"
         + profile1Timeline
+        + "        </div>\n"
+        + "        <div class=\"chart-container\">\n"
         + profile2Timeline
-        + "<div style=\"display: grid;\" grid-template-columns: repeat(2, 1fr); gap: 10px;"
-        + " grid-auto-rows: minmax(100px, auto);\">\n"
-        + "<div style=\"grid-column: 1/2; grid-row: 1;\">\n"
+        + "        </div>\n"
+        + "      </div>\n"
+        + "      \n"
+        + "      <!-- Convert to Rel Section -->\n"
+        + "      <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-6\">\n"
         + convertToRel1
-        + "</div>\n"
-        + "<div style=\"grid-column: 2/2; grid-row: 1;\">\n"
         + convertToRel2
-        + "</div>\n"
-        + "</div>\n"
-        + "</body>";
+        + "      </div>\n"
+        + "    </div>\n"
+        + "  </div>\n"
+        + "</body>\n"
+        + "</html>\n";
   }
 
   @Override

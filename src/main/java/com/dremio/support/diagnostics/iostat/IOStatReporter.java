@@ -15,6 +15,7 @@ package com.dremio.support.diagnostics.iostat;
 
 import static com.dremio.support.diagnostics.shared.HtmlTableDataColumn.col;
 
+import com.dremio.support.diagnostics.shared.DQDVersion;
 import com.dremio.support.diagnostics.shared.HtmlTableBuilder;
 import com.dremio.support.diagnostics.shared.HtmlTableDataColumn;
 import com.dremio.support.diagnostics.shared.JsLibraryTextProvider;
@@ -48,12 +49,65 @@ public class IOStatReporter {
  <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>IO Stats report</title>
-  <meta name"description" content="report for iostats">
+  <title>IOStat Analysis - DQD</title>
+  <meta name="description" content="Disk I/O and system performance analysis">
   <meta name="author" content="dremio">
-  <meta property="og:title" content="iostats report">
-  <meta property="og:type" content="website">
-  <meta property="og:description" content="plotly generated graphs for iostats">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            secondary: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            },
+            accent: {
+              orange: {
+                50: '#fff7ed',
+                100: '#ffedd5',
+                200: '#fed7aa',
+                300: '#fdba74',
+                400: '#fb923c',
+                500: '#f97316',
+                600: '#ea580c',
+                700: '#c2410c',
+                800: '#9a3412',
+                900: '#7c2d12',
+              }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
      html {
       scroll-behavior: smooth;
@@ -61,71 +115,31 @@ public class IOStatReporter {
      table {
      table-layout:fixed; width: 100%%;
      }
-     .summary-page {
-         display: grid;
-         grid-template-columns: repeat(3, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
-     }
-     .content-page {
-         display: grid;
-         grid-template-columns: repeat(2, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
+     .chart-container {
+       background: white;
+       border-radius: 0.75rem;
+       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+       padding: 1.5rem;
+       margin-bottom: 1.5rem;
      }
      .tooltip-pr {
        overflow: hidden;
        white-space: nowrap;
        text-overflow: ellipsis;
      }
-
      .tooltip-pr .tooltiptext-pr {
        color: black;
        hyphens: auto;
      }
-
      .tooltip-pr:hover {
        cursor: pointer;
        white-space: initial;
        transition: height 0.2s ease-in-out;
      }
-
-     /* Style the navbar */
-     #navbar {
-       overflow: hidden;
-       background-color: #333;
-       z-index: 289;
-     }
-
-     /* Navbar links */
-     #navbar a {
-       float: left;
-       display: block;
-       color: #f2f2f2;
-       text-align: center;
-       padding: 14px;
-       text-decoration: none;
-     }
-       #navbar .active-link {
-         color: white;
-         background-color: green;
-       }
-
-     /* Page content */
-     .content {
-       //padding-top: 50px;
-     }
-
-     /* The sticky class is added to the navbar with JS when it reaches its scroll position */
-     .sticky {
-       position: fixed;
-       top: 0;
-       width: 100%%;
-     }
-
-     /* Add some top padding to the page content to prevent sudden quick movement (as the navigation bar gets a new position at the top of the page (position:fixed and top:0) */
-     .sticky + .content {
-       padding-top: 100px;
+     /* Plotly override styles */
+     .js-plotly-plot .plotly .modebar {
+       top: 10px !important;
+       right: 10px !important;
      }
  </style>
   <style>
@@ -147,68 +161,170 @@ public class IOStatReporter {
   %s
   </script>
  </head>
- <body>
- <div id="navbar">
-   <div style="float: left;">
-   <h3 style="color: white" >IO Stat Analysis</h3>
+ <body class="bg-gray-50">
+ <!-- Header with DQD branding -->
+ <header class="bg-gradient-to-r from-accent-orange-500 to-accent-orange-600 shadow-lg sticky top-0 z-50">
+   <div class="container mx-auto px-6">
+     <div class="flex items-center justify-between h-16">
+       <div class="flex items-center space-x-4">
+         <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center">
+           <i class="fas fa-stethoscope text-white text-xl"></i>
+         </div>
+         <div>
+           <h1 class="text-white text-xl font-bold">DQD - IOStat Analysis</h1>
+           <p class="text-accent-orange-100 text-sm">Dremio Query Doctor</p>
+         </div>
+       </div>
+       <nav class="hidden md:flex space-x-1">
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#summary-section">
+           <i class="fas fa-chart-pie mr-1"></i> Summary
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#cpu-section">
+           <i class="fas fa-microchip mr-1"></i> CPU
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#disk-queue-section">
+           <i class="fas fa-list mr-1"></i> Queue
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#disk-await-section">
+           <i class="fas fa-clock mr-1"></i> Await
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#disk-rw-section">
+           <i class="fas fa-exchange-alt mr-1"></i> Throughput
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#disk-iops-section">
+           <i class="fas fa-tachometer-alt mr-1"></i> IOPS
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#disk-util-section">
+           <i class="fas fa-percentage mr-1"></i> Utilization
+         </a>
+       </nav>
+     </div>
    </div>
-   <div style="float:right;">
-   <a class="nav-link" href="#summary-section">Summary</a>
-   <a class="nav-link" href="#cpu-section">CPU</a>
-   <a class="nav-link" href="#disk-queue-section">Queue</a>
-   <a class="nav-link" href="#disk-await-section">Await</a>
-   <a class="nav-link" href="#disk-rw-section">Throughput</a>
-   <a class="nav-link" href="#disk-iops-section">IOPS</a>
-   <a class="nav-link" href="#disk-util-section">Utilization</a>
+ </header>
+
+ <!-- Mobile navigation -->
+ <nav class="md:hidden bg-accent-orange-600 border-t border-accent-orange-700">
+   <div class="grid grid-cols-4 gap-1 p-2">
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#summary-section">Summary</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#cpu-section">CPU</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#disk-queue-section">Queue</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#disk-await-section">Await</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#disk-rw-section">Throughput</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#disk-iops-section">IOPS</a>
+     <a class="nav-link px-2 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-xs" href="#disk-util-section">Utilization</a>
    </div>
- </div>
- <main class="content">
- <section id="summary-section">
- <h3>Summary</h3>
- <div class="content-page">
-  <div>%s</div>
-  <div>%s</div>
- </div>
- </section>
- %s
+ </nav>
+
+ <main class="container mx-auto px-6 py-8">
+   <!-- Info Banner -->
+   <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
+     <div class="flex items-start">
+       <div class="flex-shrink-0">
+         <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+           <i class="fas fa-info-circle text-blue-600"></i>
+         </div>
+       </div>
+       <div class="ml-4">
+         <h3 class="text-base font-semibold text-blue-900 mb-2">Understanding This Report</h3>
+         <p class="text-blue-800 mb-3">
+           This analysis provides disk I/O and system performance metrics from your iostat output.
+         </p>
+         <p class="text-sm text-blue-700">
+           For additional context on interpreting iostat data, consider reading
+           <a href="https://www.redhat.com/sysadmin/linux-iostat-command" target="_blank"
+              class="text-blue-600 hover:text-blue-700 underline font-medium">
+             this guide on iostat analysis
+           </a>
+         </p>
+       </div>
+     </div>
+   </div>
+   <section id="summary-section" class="mb-12">
+     <div class="flex items-center mb-6">
+       <div class="w-12 h-12 bg-accent-orange-100 rounded-xl flex items-center justify-center mr-4">
+         <i class="fas fa-chart-pie text-accent-orange-600 text-xl"></i>
+       </div>
+       <h2 class="text-2xl font-bold text-gray-800">Analysis Summary</h2>
+     </div>
+     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div class="bg-white rounded-xl shadow-sm p-6">
+         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+           <i class="fas fa-chart-line text-accent-orange-600 mr-2"></i> Important Data Points
+         </h3>
+         %s
+       </div>
+       <div class="bg-white rounded-xl shadow-sm p-6">
+         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+           <i class="fas fa-lightbulb text-yellow-600 mr-2"></i> Recommendations
+         </h3>
+         %s
+       </div>
+     </div>
+   </section>
+
+   %s
  </main>
+
  <script>
-   // When the user scrolls the page, execute myFunction
-   window.onscroll = function() {stickNav()};
+    // Smooth scroll offset for sticky header
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          const offset = 80; // Header height
+          const targetPosition = target.offsetTop - offset;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
 
-   // Get the navbar
-   var navbar = document.getElementById("navbar");
-
-   // Get the offset position of the navbar
-   var sticky = navbar.offsetTop;
-
-   // Add the sticky class to the navbar when you reach its scroll position. Remove "sticky" when you leave the scroll position
-   function stickNav() {
-     if (window.pageYOffset >= sticky) {
-       navbar.classList.add("sticky")
-     } else {
-       navbar.classList.remove("sticky");
-     }
-   }
- </script>
-  <script>
+    // Active nav link highlighting
     const sections = document.querySelectorAll('section');
-    const links = document.querySelectorAll('a.nav-link');
+    const navLinks = document.querySelectorAll('.nav-link');
 
     window.addEventListener('scroll', () => {
-        let scrollPosition = window.scrollY + 80;
-        sections.forEach(section => {
-            if (scrollPosition >= section.offsetTop) {
-                links.forEach(link => {
-                    link.classList.remove('active-link');
-                    if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
-                        link.classList.add('active-link');
-                    }
-                });
-            }
-        });
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('bg-white/20', 'text-white');
+        if (link.getAttribute('href').substring(1) === current) {
+          link.classList.add('bg-white/20', 'text-white');
+        }
+      });
     });
   </script>
+
+ <!-- Footer -->
+ <footer class="bg-gray-800 text-white py-8 mt-12">
+   <div class="container mx-auto px-6">
+     <div class="flex flex-col md:flex-row justify-between items-center">
+       <div class="flex items-center mb-4 md:mb-0">
+         <div class="w-8 h-8 bg-accent-orange-600 rounded-lg flex items-center justify-center mr-3">
+           <i class="fas fa-stethoscope text-white"></i>
+         </div>
+         <div>
+           <h3 class="font-bold">DQD - Dremio Query Doctor</h3>
+           <p class="text-gray-400 text-sm">Version %s</p>
+         </div>
+       </div>
+       <div class="text-gray-400 text-sm text-center md:text-right">
+         <p>Analyze • Diagnose • Optimize</p>
+         <p class="mt-1">Generated on %s</p>
+       </div>
+     </div>
+   </div>
+ </footer>
+
  </body>
 </html>
 """,
@@ -220,7 +336,10 @@ public class IOStatReporter {
               jsLibraryTextProvider.getFilterTableText(),
               this.summaryText(summary),
               this.recommendations(summary),
-              this.detailGraph(reportStats));
+              this.detailGraph(reportStats),
+              DQDVersion.getVersion(),
+              java.time.LocalDateTime.now()
+                  .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
       output.write(template.getBytes("UTF-8"));
     }
   }
@@ -439,50 +558,156 @@ public class IOStatReporter {
     return String.format(
         Locale.US,
         """
-        <section>
-            <section id="cpu-section">
-                <h3>CPU</h3>
-                <div id="cpu-usage-graph"></div>
-            </section>
-            <section id="disk-queue-section">
-                <h3>Queue</h3>
-                <div id="disk-queue-graph"></div>
-            </section>
-            <section id="disk-await-section">
-                <h3>Await</h3>
-                <div id="disk-await-graph"></div>
-            </section>
-            <section id="disk-rw-section">
-                <h3>Throughput</h3>
-                <div id="disk-io-graph"></div>
-            </section>
-            <section id="disk-iops-section">
-                <h3>IOPS</h3>
-                <div id="disk-iops-graph"></div>
-            </section>
-            <section id="disk-util-section">
-                <h3>Utilization</h3>
-                <div id="disk-util-graph"></div>
-            </section>
-            <script>
-            Plotly.newPlot('cpu-usage-graph',[ %s ], {
-            title:'CPU Usage Over Time'
-            });
-            Plotly.newPlot('disk-queue-graph',[ %s ], {
-            title:'Disk Queue Over Time'
-            });
-            Plotly.newPlot('disk-await-graph',[ %s ], {
-            title:'Disk Await Millis Over Time'
-            });
-            Plotly.newPlot('disk-io-graph',[ %s ], {
-            title:'Disk Read/Write KB Over Time'
-            });
-             Plotly.newPlot('disk-iops-graph',[ %s ], {
-            title:'Disk IOPS Over Time'
-            });
-             Plotly.newPlot('disk-util-graph',[ %s ], {
-            title:'Disk Util%% Over Time'
-            });
+        <section id="cpu-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-microchip text-orange-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">CPU Usage Analysis</h2>
+          </div>
+          <div class="chart-container">
+            <div id="cpu-usage-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <section id="disk-queue-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-list text-blue-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Disk Queue Analysis</h2>
+          </div>
+          <div class="chart-container">
+            <div id="disk-queue-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <section id="disk-await-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-clock text-purple-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Disk Await Time</h2>
+          </div>
+          <div class="chart-container">
+            <div id="disk-await-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <section id="disk-rw-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-exchange-alt text-green-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Disk Throughput</h2>
+          </div>
+          <div class="chart-container">
+            <div id="disk-io-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <section id="disk-iops-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-tachometer-alt text-red-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Disk IOPS</h2>
+          </div>
+          <div class="chart-container">
+            <div id="disk-iops-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <section id="disk-util-section" class="mb-12">
+          <div class="flex items-center mb-6">
+            <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mr-4">
+              <i class="fas fa-percentage text-yellow-600 text-xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Disk Utilization</h2>
+          </div>
+          <div class="chart-container">
+            <div id="disk-util-graph" style="width: 100%%; height: 400px;"></div>
+          </div>
+        </section>
+
+        <script>
+        // Configure Plotly layout defaults
+        const layoutDefaults = {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: {
+            family: 'system-ui, -apple-system, sans-serif',
+            size: 12,
+            color: '#374151'
+          },
+          margin: { l: 60, r: 30, t: 40, b: 60 },
+          xaxis: {
+            gridcolor: '#e5e7eb',
+            zerolinecolor: '#e5e7eb'
+          },
+          yaxis: {
+            gridcolor: '#e5e7eb',
+            zerolinecolor: '#e5e7eb'
+          }
+        };
+
+        Plotly.newPlot('cpu-usage-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'CPU Usage Over Time (%%)',
+            font: { size: 16 }
+          }
+        });
+
+        Plotly.newPlot('disk-queue-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Average Disk Queue Size Over Time',
+            font: { size: 16 }
+          }
+        });
+
+        Plotly.newPlot('disk-await-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Disk Await Time (milliseconds)',
+            font: { size: 16 }
+          }
+        });
+
+        Plotly.newPlot('disk-io-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Disk Read/Write Throughput (KB/s)',
+            font: { size: 16 }
+          }
+        });
+
+        Plotly.newPlot('disk-iops-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Disk IOPS (Operations Per Second)',
+            font: { size: 16 }
+          }
+        });
+
+        Plotly.newPlot('disk-util-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Disk Utilization (%%)',
+            font: { size: 16 }
+          }
+        });
+
+        // Make charts responsive
+        window.addEventListener('resize', () => {
+          Plotly.Plots.resize('cpu-usage-graph');
+          Plotly.Plots.resize('disk-queue-graph');
+          Plotly.Plots.resize('disk-await-graph');
+          Plotly.Plots.resize('disk-io-graph');
+          Plotly.Plots.resize('disk-iops-graph');
+          Plotly.Plots.resize('disk-util-graph');
+        });
         </script>
         """,
         String.join(",", cpuTraces),

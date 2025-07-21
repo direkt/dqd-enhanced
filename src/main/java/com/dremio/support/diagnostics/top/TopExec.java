@@ -189,12 +189,65 @@ public class TopExec {
  <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Threaded Top report</title>
-  <meta name"description" content="report for top">
+  <title>Threaded Top Analysis - DQD</title>
+  <meta name="description" content="Thread-level CPU and memory usage analysis">
   <meta name="author" content="dremio">
-  <meta property="og:title" content="top report">
-  <meta property="og:type" content="website">
-  <meta property="og:description" content="plotly generated graphs for top">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            secondary: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            },
+            accent: {
+              red: {
+                50: '#fef2f2',
+                100: '#fee2e2',
+                200: '#fecaca',
+                300: '#fca5a5',
+                400: '#f87171',
+                500: '#ef4444',
+                600: '#dc2626',
+                700: '#b91c1c',
+                800: '#991b1b',
+                900: '#7f1d1d',
+              }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
      html {
       scroll-behavior: smooth;
@@ -202,71 +255,31 @@ public class TopExec {
      table {
      table-layout:fixed; width: 100%%;
      }
-     .summary-page {
-         display: grid;
-         grid-template-columns: repeat(3, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
-     }
-     .content-page {
-         display: grid;
-         grid-template-columns: repeat(2, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
+     .chart-container {
+       background: white;
+       border-radius: 0.75rem;
+       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+       padding: 1.5rem;
+       margin-bottom: 1.5rem;
      }
      .tooltip-pr {
        overflow: hidden;
        white-space: nowrap;
        text-overflow: ellipsis;
      }
-
      .tooltip-pr .tooltiptext-pr {
        color: black;
        hyphens: auto;
      }
-
      .tooltip-pr:hover {
        cursor: pointer;
        white-space: initial;
        transition: height 0.2s ease-in-out;
      }
-
-     /* Style the navbar */
-     #navbar {
-       overflow: hidden;
-       background-color: #333;
-       z-index: 289;
-     }
-
-     /* Navbar links */
-     #navbar a {
-       float: left;
-       display: block;
-       color: #f2f2f2;
-       text-align: center;
-       padding: 14px;
-       text-decoration: none;
-     }
-       #navbar .active-link {
-         color: white;
-         background-color: green;
-       }
-
-     /* Page content */
-     .content {
-       //padding-top: 50px;
-     }
-
-     /* The sticky class is added to the navbar with JS when it reaches its scroll position */
-     .sticky {
-       position: fixed;
-       top: 0;
-       width: 100%%;
-     }
-
-     /* Add some top padding to the page content to prevent sudden quick movement (as the navigation bar gets a new position at the top of the page (position:fixed and top:0) */
-     .sticky + .content {
-       padding-top: 100px;
+     /* Plotly override styles */
+     .js-plotly-plot .plotly .modebar {
+       top: 10px !important;
+       right: 10px !important;
      }
  </style>
   <style>
@@ -276,59 +289,141 @@ public class TopExec {
   %s
   </script>
  </head>
- <body>
- <div id="navbar">
-   <div style="float: left;">
-   <h3 style="color: white" >Thread Top Analysis</h3>
+ <body class="bg-gray-50">
+ <!-- Header with DQD branding -->
+ <header class="bg-gradient-to-r from-accent-red-500 to-accent-red-600 shadow-lg sticky top-0 z-50">
+   <div class="container mx-auto px-6">
+     <div class="flex items-center justify-between h-16">
+       <div class="flex items-center space-x-4">
+         <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-lg flex items-center justify-center">
+           <i class="fas fa-stethoscope text-white text-xl"></i>
+         </div>
+         <div>
+           <h1 class="text-white text-xl font-bold">DQD - Threaded Top Analysis</h1>
+           <p class="text-accent-red-100 text-sm">Dremio Query Doctor</p>
+         </div>
+       </div>
+       <nav class="hidden md:flex space-x-1">
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#cpu-section">
+           <i class="fas fa-microchip mr-1"></i> CPU
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#threads-section">
+           <i class="fas fa-list mr-1"></i> Threads
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#mem-section">
+           <i class="fas fa-memory mr-1"></i> Memory
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#swap-section">
+           <i class="fas fa-hdd mr-1"></i> Swap
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#thread-stats-section">
+           <i class="fas fa-chart-bar mr-1"></i> Stats
+         </a>
+         <a class="nav-link px-4 py-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors" href="#debugging-section">
+           <i class="fas fa-bug mr-1"></i> Debug
+         </a>
+       </nav>
+     </div>
    </div>
-   <div style="float:right;">
-   <a class="nav-link" href="#cpu-section">CPU</a>
-   <a class="nav-link" href="#threads-section">Threads</a>
-   <a class="nav-link" href="#mem-section">Memory</a>
-   <a class="nav-link" href="#swap-section">Swap</a>
-   <a class="nav-link" href="#thread-stats-section">Thread Stats</a>
-   <a class="nav-link" href="#debugging-section">Report Debugging</a>
+ </header>
+
+ <!-- Mobile navigation -->
+ <nav class="md:hidden bg-accent-red-600 border-t border-accent-red-700">
+   <div class="grid grid-cols-3 gap-1 p-2">
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#cpu-section">CPU</a>
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#threads-section">Threads</a>
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#mem-section">Memory</a>
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#swap-section">Swap</a>
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#thread-stats-section">Stats</a>
+     <a class="nav-link px-3 py-2 rounded text-center text-white/80 hover:text-white hover:bg-white/10 text-sm" href="#debugging-section">Debug</a>
    </div>
- </div>
- <main class="content">
- <p>To understand this report consider reading <a href="https://www.redhat.com/sysadmin/interpret-top-output">this description of how to read top</a></p>
-  %s
+ </nav>
+
+ <main class="container mx-auto px-6 py-8">
+   <!-- Info Banner -->
+   <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8">
+     <div class="flex items-start">
+       <div class="flex-shrink-0">
+         <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+           <i class="fas fa-info-circle text-blue-600"></i>
+         </div>
+       </div>
+       <div class="ml-4">
+         <h3 class="text-base font-semibold text-blue-900 mb-2">Understanding This Report</h3>
+         <p class="text-blue-800 mb-3">
+           This analysis provides thread-level CPU and memory usage patterns from your system's top output.
+         </p>
+         <p class="text-sm text-blue-700">
+           For additional context, consider reading
+           <a href="https://www.redhat.com/sysadmin/interpret-top-output" target="_blank"
+              class="text-blue-600 hover:text-blue-700 underline font-medium">
+             this guide on interpreting top output
+           </a>
+         </p>
+       </div>
+     </div>
+   </div>
+
+   %s
  </main>
+
+ <!-- Footer -->
+ <footer class="bg-gray-800 text-white py-8 mt-12">
+   <div class="container mx-auto px-6">
+     <div class="flex flex-col md:flex-row justify-between items-center">
+       <div class="flex items-center mb-4 md:mb-0">
+         <div class="w-8 h-8 bg-accent-red-600 rounded-lg flex items-center justify-center mr-3">
+           <i class="fas fa-stethoscope text-white"></i>
+         </div>
+         <div>
+           <h3 class="font-bold">DQD - Dremio Query Doctor</h3>
+           <p class="text-gray-400 text-sm">Version %s</p>
+         </div>
+       </div>
+       <div class="text-gray-400 text-sm text-center md:text-right">
+         <p>Analyze • Diagnose • Optimize</p>
+         <p class="mt-1">Generated on %s</p>
+       </div>
+     </div>
+   </div>
+ </footer>
+
  <script>
-   // When the user scrolls the page, execute myFunction
-   window.onscroll = function() {stickNav()};
+    // Smooth scroll offset for sticky header
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          const offset = 80; // Header height
+          const targetPosition = target.offsetTop - offset;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
 
-   // Get the navbar
-   var navbar = document.getElementById("navbar");
-
-   // Get the offset position of the navbar
-   var sticky = navbar.offsetTop;
-
-   // Add the sticky class to the navbar when you reach its scroll position. Remove "sticky" when you leave the scroll position
-   function stickNav() {
-     if (window.pageYOffset >= sticky) {
-       navbar.classList.add("sticky")
-     } else {
-       navbar.classList.remove("sticky");
-     }
-   }
- </script>
- <script>
+    // Active nav link highlighting
     const sections = document.querySelectorAll('section');
-    const links = document.querySelectorAll('a.nav-link');
+    const navLinks = document.querySelectorAll('.nav-link');
 
     window.addEventListener('scroll', () => {
-        let scrollPosition = window.scrollY + 80;
-        sections.forEach(section => {
-            if (scrollPosition >= section.offsetTop) {
-                links.forEach(link => {
-                    link.classList.remove('active-link');
-                    if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
-                        link.classList.add('active-link');
-                    }
-                });
-            }
-        });
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('bg-white/20', 'text-white');
+        if (link.getAttribute('href').substring(1) === current) {
+          link.classList.add('bg-white/20', 'text-white');
+        }
+      });
     });
   </script>
  </body>
@@ -336,8 +431,10 @@ public class TopExec {
 """,
                   jsLibraryTextProvider.getTableCSS(),
                   jsLibraryTextProvider.getPlotlyJsText(),
-                  threadGraph(
-                      times, cpuStats, memStats, swapStats, threadStats, parseErrors, maps));
+                  threadGraph(times, cpuStats, memStats, swapStats, threadStats, parseErrors, maps),
+                  DQDVersion.getVersion(),
+                  java.time.LocalDateTime.now()
+                      .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
           writer.write(html.getBytes("UTF-8"));
         }
       }
@@ -487,48 +584,160 @@ public class TopExec {
     return String.format(
         Locale.US,
         """
-        <section id="cpu-section">
-         <h3>CPU</h3>
-         <div id="top-cpu-graph"></div>
-         </section>
-         <section id="threads-section">
-         <h3>Threads</h3>
-          <div id="threads-usage-graph"></div>
+        <section id="cpu-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-microchip text-red-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">CPU Usage Analysis</h2>
+         </div>
+         <div class="chart-container">
+           <div id="top-cpu-graph" style="width: 100%%; height: 400px;"></div>
+         </div>
         </section>
-         <section id="mem-section">
-         <h3>Memory</h3>
-         <div id="top-mem-graph"></div>
-         </section>
-          <section id="swap-section">
-         <h3>Swap</h3>
-         <div id="top-swap-graph"></div>
-         </section>
-        <section id="thread-stats-section">
-         <h3>Thread Stats</h3>
-         <div id="top-threads-graph"></div>
-         </section>
-          <section id="debugging-section">
-         <h3>Debugging</h3>
-         <h4>Report Stats</h4>
-         %s
-         <h4>Parse Errors</h4>
-         %s
-         </section>
+
+        <section id="threads-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-threads text-purple-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">Thread CPU Usage</h2>
+         </div>
+         <div class="chart-container">
+           <div id="threads-usage-graph" style="width: 100%%; height: 600px;"></div>
+         </div>
+        </section>
+
+        <section id="mem-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-memory text-blue-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">Memory Usage</h2>
+         </div>
+         <div class="chart-container">
+           <div id="top-mem-graph" style="width: 100%%; height: 400px;"></div>
+         </div>
+        </section>
+
+        <section id="swap-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-hdd text-orange-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">Swap Usage</h2>
+         </div>
+         <div class="chart-container">
+           <div id="top-swap-graph" style="width: 100%%; height: 400px;"></div>
+         </div>
+        </section>
+
+        <section id="thread-stats-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-chart-bar text-green-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">Thread Statistics</h2>
+         </div>
+         <div class="chart-container">
+           <div id="top-threads-graph" style="width: 100%%; height: 400px;"></div>
+         </div>
+        </section>
+
+        <section id="debugging-section" class="mb-12">
+         <div class="flex items-center mb-6">
+           <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mr-4">
+             <i class="fas fa-bug text-gray-600 text-xl"></i>
+           </div>
+           <h2 class="text-2xl font-bold text-gray-800">Report Debugging</h2>
+         </div>
+
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+           <div class="bg-white rounded-xl shadow-sm p-6">
+             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+               <i class="fas fa-chart-line text-gray-600 mr-2"></i> Report Statistics
+             </h3>
+             %s
+           </div>
+
+           <div class="bg-white rounded-xl shadow-sm p-6">
+             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+               <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i> Parse Errors
+             </h3>
+             %s
+           </div>
+         </div>
+        </section>
+
         <script>
+        // Configure Plotly layout defaults
+        const layoutDefaults = {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: {
+            family: 'system-ui, -apple-system, sans-serif',
+            size: 12,
+            color: '#374151'
+          },
+          margin: { l: 60, r: 30, t: 40, b: 60 },
+          xaxis: {
+            gridcolor: '#e5e7eb',
+            zerolinecolor: '#e5e7eb'
+          },
+          yaxis: {
+            gridcolor: '#e5e7eb',
+            zerolinecolor: '#e5e7eb'
+          }
+        };
+
         Plotly.newPlot('top-cpu-graph', [ %s ], {
-          title:'CPU Usage'
+          ...layoutDefaults,
+          title: {
+            text: 'CPU Usage Over Time',
+            font: { size: 16 }
+          }
         });
+
         Plotly.newPlot('threads-usage-graph',[ %s ], {
-          title:'Per Thread CPU Usage (top 100 threads)'
+          ...layoutDefaults,
+          title: {
+            text: 'Per Thread CPU Usage (Top 100 Threads)',
+            font: { size: 16 }
+          },
+          height: 600
         });
+
         Plotly.newPlot('top-mem-graph',[ %s ], {
-          title:'Mem Usage in kb (base 1000)'
+          ...layoutDefaults,
+          title: {
+            text: 'Memory Usage in MiB',
+            font: { size: 16 }
+          }
         });
-         Plotly.newPlot('top-swap-graph',[ %s ], {
-          title:'Swap Usage in kb (base 1000)'
+
+        Plotly.newPlot('top-swap-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Swap Usage in MiB',
+            font: { size: 16 }
+          }
         });
-          Plotly.newPlot('top-threads-graph',[ %s ], {
-          title:'Thread Stats'
+
+        Plotly.newPlot('top-threads-graph',[ %s ], {
+          ...layoutDefaults,
+          title: {
+            text: 'Thread State Distribution',
+            font: { size: 16 }
+          }
+        });
+
+        // Make charts responsive
+        window.addEventListener('resize', () => {
+          Plotly.Plots.resize('top-cpu-graph');
+          Plotly.Plots.resize('threads-usage-graph');
+          Plotly.Plots.resize('top-mem-graph');
+          Plotly.Plots.resize('top-swap-graph');
+          Plotly.Plots.resize('top-threads-graph');
         });
         </script>
 

@@ -27,6 +27,9 @@ import java.util.Map;
 public class GraphWriter {
 
   public String writeMermaid(final ConvertToRel convertToRel) {
+    if (convertToRel == null) {
+      return "<p>No Convert To Rel data available</p>";
+    }
     id = 0;
     LabelData labelData = writeNodeLabel(convertToRel);
     StringBuilder builder = new StringBuilder();
@@ -45,6 +48,9 @@ public class GraphWriter {
   private int id = 0;
 
   private LabelData writeNodeLabel(ConvertToRel node) {
+    if (node == null) {
+      return new LabelData(id, id + "-null", new ArrayList<>(), new HashMap<>());
+    }
     List<LabelData> children = new ArrayList<>();
 
     String typeName = node.getTypeName();

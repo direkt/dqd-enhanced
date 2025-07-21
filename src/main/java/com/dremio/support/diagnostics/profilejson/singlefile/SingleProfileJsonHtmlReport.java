@@ -13,7 +13,8 @@
  */
 package com.dremio.support.diagnostics.profilejson.singlefile;
 
-import com.dremio.support.diagnostics.profilejson.*;
+import com.dremio.support.diagnostics.profilejson.Operator;
+import com.dremio.support.diagnostics.profilejson.PhaseThread;
 import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraph;
 import com.dremio.support.diagnostics.profilejson.converttorel.ConvertToRelGraphParser;
 import com.dremio.support.diagnostics.profilejson.plan.PlanRelation;
@@ -102,16 +103,21 @@ public class SingleProfileJsonHtmlReport implements Report {
               .generateSummary(this.showPlanDetails, this.parsed, planRelations);
       sections.addAll(out.sections());
       titles.addAll(out.titles());
-      htmlFragments.add(out.htmlString());
+      htmlFragments.add(modernizeHtml(out.htmlString()));
       final String plotlyJsText = jsLibProvider.getPlotlyJsText();
       scripts.add("<script>" + plotlyJsText + "</script>");
       final String mermaidJsText = jsLibProvider.getMermaidJsText();
       scripts.add("<script>" + mermaidJsText + "</script>");
       htmlFragments.add(
           """
-          <section id="phases-section">
-          <h2>Phases</h2>
+          <section id="phases-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-layer-group mr-2 text-primary-600"></i>
+            Phases
+          </h2>
+          <div class="overflow-x-auto">
           %s
+          </div>
           </section>
           """
               .formatted(
@@ -121,9 +127,14 @@ public class SingleProfileJsonHtmlReport implements Report {
       titles.add("Phases");
       htmlFragments.add(
           """
-           <section id="timeline-section">
-            <h2>Timeline</h2>
+           <section id="timeline-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+              <i class="fas fa-clock mr-2 text-primary-600"></i>
+              Timeline
+            </h2>
+            <div class="overflow-x-auto">
            %s
+            </div>
            </section>
           """
               .formatted(
@@ -182,9 +193,14 @@ public class SingleProfileJsonHtmlReport implements Report {
 
       htmlFragments.add(
           """
-          <section id="op-duration-section">
-          <h2>Duration Graph</h2>
+          <section id="op-duration-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-hourglass-half mr-2 text-primary-600"></i>
+            Duration Graph
+          </h2>
+          <div class="overflow-x-auto">
           %s
+          </div>
           </section>
           """
               .formatted(
@@ -195,9 +211,14 @@ public class SingleProfileJsonHtmlReport implements Report {
 
       htmlFragments.add(
           """
-          <section id="op-records-section">
-          <h2>Records Graph</h2>
+          <section id="op-records-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-database mr-2 text-primary-600"></i>
+            Records Graph
+          </h2>
+          <div class="overflow-x-auto">
           %s
+          </div>
           </section>
           """
               .formatted(
@@ -212,9 +233,18 @@ public class SingleProfileJsonHtmlReport implements Report {
           sections.add("convert-to-rel-section");
           titles.add("Convert To Rel");
           convertToRel =
-              "<section id=\"convert-to-rel-section\"><h2>Convert To Rel</h2>\n"
-                  + sankeyWriter.writeMermaid(c.getConvertToRelTree())
-                  + " </section>";
+              """
+              <section id="convert-to-rel-section" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-project-diagram mr-2 text-primary-600"></i>
+                Convert To Rel
+              </h2>
+              <div class="overflow-x-auto">
+              %s
+              </div>
+              </section>
+              """
+                  .formatted(sankeyWriter.writeMermaid(c.getConvertToRelTree()));
         } else {
           convertToRel = "";
         }
@@ -224,7 +254,11 @@ public class SingleProfileJsonHtmlReport implements Report {
       htmlFragments.add(convertToRel);
     } else {
       htmlFragments.add(
-          "<h3 style=\"color: red\">Too Many Phases: Disabled Graphs and Convert To Rel</h3>");
+          """
+<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+  <h3 class="text-red-800 font-semibold">Too Many Phases: Disabled Graphs and Convert To Rel</h3>
+</div>
+""");
     }
 
     var sectionBuilder = new StringBuilder();
@@ -232,232 +266,350 @@ public class SingleProfileJsonHtmlReport implements Report {
       final String title = titles.get(j);
       final String sectionName = sections.get(j);
       sectionBuilder.append(
-          String.format("<a class=\"nav-link\" href=\"#%s\">%s</a>\n", sectionName, title));
-    }
-    return "<!doctype html>\n"
-        + "<html   lang=\"en\">\n"
-        + "<head>\n"
-        + "  <meta charset=\"utf-8\">\n"
-        + "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-        + "  <title>"
-        + this.getTitle()
-        + " </title>\n"
-        + "  <meta name\"description\" content=\"report for "
-        + this.getTitle()
-        + " \">\n"
-        + "  <meta name=\"author\" content=\"dremio\">\n"
-        + "  <meta property=\"og:title\" content=\""
-        + this.getTitle()
-        + "\">\n"
-        + "  <meta property=\"og:type\" content=\"website\">\n"
-        + "  <meta property=\"og:description\" content=\"plotly generated graphs\">\n"
-        + "<style>\n"
-        + "caption {\n"
-        + "font-weight: bold;\n"
-        + "font-size: 24px;\n"
-        + "text-align: left;\n"
-        + "color: #333;\n"
-        + "	margin-bottom: 16px;\n"
-        + "	margin-top: 16px;\n"
-        + "}\n"
-        + "table {\n"
-        + "border-collapse: collapse;\n"
-        + "text-align: center;\n"
-        + "vertical-align: middle;\n"
-        + "}\n"
-        + "th, td {\n"
-        + "border: 1px solid black;\n"
-        + "padding: 8px;\n"
-        + "}\n"
-        + "thead {\n"
-        + "background-color: #333;\n"
-        + "color: white;\n"
-        + "font-size: 0.875rem;\n"
-        + "text-transform: uppercase;\n"
-        + "letter-spacing: 2%;\n"
-        + "}\n"
-        + "tbody tr:nth-child(odd) {\n"
-        + "background-color: #fff;\n"
-        + "}\n"
-        + "tbody tr:nth-child(even) {\n"
-        + "background-color: #eee;\n"
-        + "}\n"
-        + "tbody th {\n"
-        + "background-color: #36c;\n"
-        + "color: #fff;\n"
-        + " text-align: left;\n"
-        + "}\n"
-        + "tbody tr:nth-child(even) th {\n"
-        + "background-color: #25c;\n"
-        + "}\n"
-        + "</style>\n"
-        + " <style> \n"
-        + "  .mermaidTooltip { \n"
-        + "    position: absolute; \n"
-        + "    text-align: center; \n"
-        + "    max-width: 200px; \n"
-        + "    padding: 2px; \n"
-        + "    font-family: 'trebuchet ms', verdana, arial; \n"
-        + "    font-size: 12px; \n"
-        + "    background: #ffffde;\n"
-        + "    border: 1px solid #aaaa33;\n"
-        + "    border-radius: 2px;\n"
-        + "    pointer-events: none;\n"
-        + "    z-index: 100; \n"
-        + "}\n"
-        + " </style>\n"
-        + """
-         <style>
-    html {
-     scroll-behavior: smooth;
-   }
-    table {
-    table-layout:fixed; width: 100%%;
-    }
-    .summary-page {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        grid-gap: 10px;
-        grid-auto-rows: minmax(100px, auto);
-    }
-    .content-page {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-gap: 10px;
-        grid-auto-rows: minmax(100px, auto);
-    }
-    .tooltip-pr {
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
+          String.format(
+              "<a class=\"nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md"
+                  + " text-sm font-medium transition-colors\" href=\"#%s\">%s</a>\n",
+              sectionName, title));
     }
 
-    .tooltip-pr .tooltiptext-pr {
-      color: black;
-      hyphens: auto;
-    }
+    return """
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%s - DQD Analysis</title>
 
-    .tooltip-pr:hover {
-      cursor: pointer;
-      white-space: initial;
-      transition: height 0.2s ease-in-out;
-    }
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    /* Style the navbar */
-    #navbar {
-      overflow: hidden;
-      background-color: #333;
-      z-index: 289;
-    }
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    /* Navbar links */
-    #navbar a {
-      float: left;
-      display: block;
-      color: #f2f2f2;
-      text-align: center;
-      padding: 14px;
-      text-decoration: none;
-    }
-      #navbar .active-link {
-        color: white;
-        background-color: green;
+    <!-- Custom Tailwind config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+              }
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /* Custom table styles */
+      .custom-table {
+        @apply w-full text-sm text-left text-gray-700 border-collapse;
       }
 
-    /* Page content */
-    .content {
-      padding-top: 50px;
-    }
+      .custom-table thead {
+        @apply text-xs text-gray-700 uppercase bg-gray-100 border-b-2 border-gray-200;
+      }
 
-    section {
-      scroll-margin-block-start: 110px;
-      scroll-margin-block-end: 110pxx;
+      .custom-table thead th {
+        @apply px-6 py-3 font-semibold tracking-wider text-left;
+      }
 
-    }
+      .custom-table tbody {
+        @apply bg-white divide-y divide-gray-200;
+      }
 
-    /* The sticky class is added to the navbar with JS when it reaches its scroll position */
-    .sticky {
-      position: fixed;
-      top: 0;
-      width: 100%%;
-    }
+      .custom-table tbody tr {
+        @apply hover:bg-gray-50 transition-colors;
+      }
 
-    /* Add some top padding to the page content to prevent sudden quick movement (as the navigation bar gets a new position at the top of the page (position:fixed and top:0) */
-    .sticky + .content {
-      padding-top: 100px;
-    }
-</style>
-"""
-        + "<style>\n"
-        + jsLibProvider.getSortableCSSText()
-        + "</style>\n"
-        + "<script>\n"
-        + jsLibProvider.getSortableText()
-        + "</script>\n"
-        + "<script>\n"
-        + jsLibProvider.getCSVExportText()
-        + "</script>\n"
-        + "<script>\n"
-        + jsLibProvider.getFilterTableText()
-        + "</script>\n"
-        + String.join("\n", scripts)
-        + "</head>\n"
-        + """
-                 <body>
+      .custom-table tbody td {
+        @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+      }
 
-          <div id="navbar">
-            <div style="float: left;">
-            <h3 style="color: white" >Profile</h3>
-            </div>
-            <div style="float:right;">
-            %s
+      /* Specific column alignments */
+      .custom-table th:first-child,
+      .custom-table td:first-child {
+        @apply text-left;
+      }
+
+      .custom-table th:last-child,
+      .custom-table td:last-child {
+        @apply text-right;
+      }
+
+      /* Numeric columns - right align */
+      .custom-table td[data-sort] {
+        @apply text-right font-mono;
+      }
+
+      /* State Timings table specific styling */
+      #stateTimingsTable td:nth-child(2),
+      #stateTimingsTable td:nth-child(3),
+      #stateTimingsTable th:nth-child(2),
+      #stateTimingsTable th:nth-child(3) {
+        @apply text-right;
+      }
+
+      /* Non Default Support Keys table */
+      #nonDefaultSupportKeys td:nth-child(4),
+      #nonDefaultSupportKeys th:nth-child(4) {
+        @apply text-right;
+      }
+
+      /* Operators table styling */
+      table[id*="operatorsTable"] td:nth-child(n+2),
+      table[id*="operatorsTable"] th:nth-child(n+2) {
+        @apply text-right;
+      }
+
+      /* Make tables responsive */
+      .table-wrapper {
+        @apply overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8;
+      }
+
+      .table-wrapper .custom-table {
+        @apply min-w-full;
+      }
+
+      /* Caption styling */
+      caption {
+        @apply text-xl font-bold text-left text-gray-800 mb-4 mt-6;
+      }
+
+      /* Mermaid tooltip */
+      .mermaidTooltip {
+        @apply absolute text-center max-w-xs p-2 text-sm bg-yellow-50 border border-yellow-200 rounded shadow-lg pointer-events-none z-50;
+      }
+
+      /* Tooltip styles */
+      .tooltip-pr {
+        @apply overflow-hidden whitespace-nowrap text-ellipsis;
+      }
+
+      .tooltip-pr .tooltiptext-pr {
+        @apply text-black;
+        hyphens: auto;
+      }
+
+      .tooltip-pr:hover {
+        @apply cursor-pointer whitespace-normal;
+        transition: height 0.2s ease-in-out;
+      }
+
+      /* Sticky navigation */
+      #navbar {
+        @apply transition-all duration-300;
+      }
+
+      #navbar.sticky {
+        @apply fixed top-0 w-full shadow-lg z-50;
+      }
+
+      .content {
+        @apply transition-all duration-300;
+      }
+
+      #navbar.sticky + .content {
+        @apply pt-24;
+      }
+
+      /* Section scroll margin */
+      section {
+        scroll-margin-block-start: 110px;
+        scroll-margin-block-end: 110px;
+      }
+
+      /* Section styling */
+      section {
+        @apply bg-white rounded-lg shadow-sm p-6 mb-6;
+      }
+
+      section h2 {
+        @apply text-xl font-semibold text-gray-800 mb-4 flex items-center;
+      }
+
+      section h3 {
+        @apply text-lg font-medium text-gray-700 mb-3;
+      }
+
+      /* Active nav link */
+      .nav-link.active-link {
+        @apply bg-primary-100 text-primary-700;
+      }
+
+      /* Button styles */
+      button {
+        @apply px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors;
+      }
+
+      /* Sortable table styles */
+      .sortable th {
+        @apply cursor-pointer select-none relative pr-8;
+      }
+
+      .sortable th:hover {
+        @apply bg-gray-200;
+      }
+
+      .sortable th::after {
+        @apply absolute right-2 text-gray-400 text-xs;
+        content: " ↕";
+      }
+
+      .sortable th.sorted-asc::after {
+        @apply text-primary-600;
+        content: " ↑";
+      }
+
+      .sortable th.sorted-desc::after {
+        @apply text-primary-600;
+        content: " ↓";
+      }
+
+      /* Grid layouts */
+      .summary-page {
+        @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+      }
+
+      .content-page {
+        @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
+      }
+
+      /* Ensure proper spacing */
+      p {
+        @apply mb-2 text-gray-700;
+      }
+
+      /* List styling */
+      ul {
+        @apply list-disc list-inside mb-4 text-gray-700;
+      }
+
+      ol {
+        @apply list-decimal list-inside mb-4 text-gray-700;
+      }
+
+      /* Definition lists */
+      dl {
+        @apply mb-4;
+      }
+
+      dt {
+        @apply font-semibold text-gray-800;
+      }
+
+      dd {
+        @apply ml-4 mb-2 text-gray-700;
+      }
+    </style>
+
+    <style>
+    %s
+    </style>
+
+    <script>
+    %s
+    </script>
+    <script>
+    %s
+    </script>
+    <script>
+    %s
+    </script>
+    %s
+  </head>
+  <body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav id="navbar" class="bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <i class="fas fa-chart-line text-white text-xl"></i>
+              </div>
+              <div>
+                <h1 class="text-xl font-bold text-gray-800">Detailed Profile Analysis</h1>
+              </div>
             </div>
           </div>
-                 <main class="content">
-          """
-            .formatted(sectionBuilder.toString())
-        + String.join("\n", htmlFragments)
-        + """
-       </main>
-       <script>
-  // When the user scrolls the page, execute myFunction
-  window.onscroll = function() {stickNav()};
+          <div class="flex items-center space-x-1 overflow-x-auto">
+            <a href="/" class="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-shrink-0">
+              <i class="fas fa-home mr-2"></i>Home
+            </a>
+            %s
+          </div>
+        </div>
+      </div>
+    </nav>
 
-  // Get the navbar
-  var navbar = document.getElementById("navbar");
+    <!-- Main Content -->
+    <main class="content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+          <i class="fas fa-microscope mr-3 text-primary-600"></i>
+          %s
+        </h1>
+      </div>
+      %s
+    </main>
 
-  // Get the offset position of the navbar
-  var sticky = navbar.offsetTop;
+    <script>
+      // Sticky navigation
+      window.onscroll = function() {stickNav()};
 
-  // Add the sticky class to the navbar when you reach its scroll position. Remove "sticky" when you leave the scroll position
-  function stickNav() {
-    if (window.pageYOffset >= sticky) {
-      navbar.classList.add("sticky")
-    } else {
-      navbar.classList.remove("sticky");
-    }
-  }
-</script>
- <script>
-   const sections = document.querySelectorAll('section');
-   const links = document.querySelectorAll('a.nav-link');
+      var navbar = document.getElementById("navbar");
+      var sticky = navbar.offsetTop;
 
-   window.addEventListener('scroll', () => {
-       let scrollPosition = window.scrollY + 140;
-       sections.forEach(section => {
-           if (scrollPosition >= section.offsetTop) {
-               links.forEach(link => {
-                   link.classList.remove('active-link');
-                   if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
-                       link.classList.add('active-link');
-                   }
-               });
-           }
-       });
-   });
- </script>
+      function stickNav() {
+        if (window.pageYOffset >= sticky) {
+          navbar.classList.add("sticky")
+        } else {
+          navbar.classList.remove("sticky");
+        }
+      }
+
+      // Active navigation highlighting
+      const sections = document.querySelectorAll('section');
+      const links = document.querySelectorAll('a.nav-link');
+
+      window.addEventListener('scroll', () => {
+          let scrollPosition = window.scrollY + 140;
+          sections.forEach(section => {
+              if (scrollPosition >= section.offsetTop) {
+                  links.forEach(link => {
+                      link.classList.remove('active-link');
+                      if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
+                          link.classList.add('active-link');
+                      }
+                  });
+              }
+          });
+      });
+    </script>
+  </body>
+</html>
 """
-        + "</body>";
+        .formatted(
+            this.getTitle(),
+            jsLibProvider.getSortableCSSText(),
+            jsLibProvider.getSortableText(),
+            jsLibProvider.getCSVExportText(),
+            jsLibProvider.getFilterTableText(),
+            String.join("\n", scripts),
+            sectionBuilder.toString(),
+            this.getTitle(),
+            String.join("\n", htmlFragments));
   }
 
   private List<PhaseThread> getPhaseThreads() {
@@ -501,5 +653,68 @@ public class SingleProfileJsonHtmlReport implements Report {
   @Override
   public String getTitle() {
     return "Profile.json Analysis";
+  }
+
+  private String modernizeHtml(String html) {
+    // Apply Tailwind CSS classes to common HTML elements
+
+    // First wrap sections in cards
+    html =
+        html.replaceAll(
+            "<section id=\"([^\"]+)\"[^>]*>",
+            "<section id=\"$1\" class=\"bg-white rounded-lg shadow-sm p-6 mb-6\">");
+
+    // Handle table styling - must be done carefully to avoid double-wrapping
+    html =
+        html
+            // First update any existing table classes
+            .replace("class=\"sortable\"", "class=\"custom-table sortable\"")
+            // Then handle tables without classes
+            .replaceAll("<table(?![^>]*class)", "<table class=\"custom-table sortable\"")
+            // Update table elements
+            .replace(
+                "<thead>",
+                "<thead class=\"text-xs text-gray-700 uppercase bg-gray-100 sticky top-0\">")
+            .replace("<tbody>", "<tbody class=\"bg-white divide-y divide-gray-200\">")
+            .replace("<tr>", "<tr class=\"hover:bg-gray-50 transition-colors\">")
+            .replace("<th>", "<th class=\"px-6 py-3 text-left font-medium whitespace-nowrap\">")
+            .replace("<td>", "<td class=\"px-6 py-4 text-sm text-gray-900\">");
+
+    // Wrap tables in overflow containers
+    html =
+        html.replaceAll(
+            "(<table[^>]*>)",
+            "<div class=\"overflow-x-auto mb-6 rounded-lg border border-gray-200\">$1");
+    html = html.replace("</table>", "</table></div>");
+
+    // Style other elements
+    html =
+        html
+            // Style captions
+            .replace(
+                "<caption>",
+                "<caption class=\"text-xl font-bold text-left text-gray-800 mb-4 mt-6\">")
+            // Style buttons
+            .replace(
+                "<button",
+                "<button class=\"px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    + " transition-colors\"")
+            // Style headings
+            .replace("<h1>", "<h1 class=\"text-2xl font-bold text-gray-900 mb-4\">")
+            .replace("<h2>", "<h2 class=\"text-xl font-semibold text-gray-800 mb-3\">")
+            .replace("<h3>", "<h3 class=\"text-lg font-medium text-gray-700 mb-2\">")
+            .replace("<h4>", "<h4 class=\"text-base font-medium text-gray-600 mb-2\">")
+            // Style paragraphs
+            .replace("<p>", "<p class=\"text-gray-700 mb-2\">")
+            // Style lists
+            .replace("<ul>", "<ul class=\"list-disc list-inside mb-4 text-gray-700\">")
+            .replace("<ol>", "<ol class=\"list-decimal list-inside mb-4 text-gray-700\">")
+            // Style grid layouts
+            .replace(
+                "class=\"summary-page\"",
+                "class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6\"")
+            .replace("class=\"content-page\"", "class=\"grid grid-cols-1 lg:grid-cols-2 gap-6\"");
+
+    return html;
   }
 }

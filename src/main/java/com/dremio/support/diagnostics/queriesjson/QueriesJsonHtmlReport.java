@@ -16,8 +16,31 @@ package com.dremio.support.diagnostics.queriesjson;
 import static com.dremio.support.diagnostics.shared.HtmlTableDataColumn.col;
 import static java.util.Arrays.asList;
 
-import com.dremio.support.diagnostics.queriesjson.html.*;
-import com.dremio.support.diagnostics.queriesjson.reporters.*;
+import com.dremio.support.diagnostics.queriesjson.html.ConcurrentQueueWriter;
+import com.dremio.support.diagnostics.queriesjson.html.Dates;
+import com.dremio.support.diagnostics.queriesjson.html.FailedQueriesWriter;
+import com.dremio.support.diagnostics.queriesjson.html.MaxCPUTimeWriter;
+import com.dremio.support.diagnostics.queriesjson.html.MaxMemoryQueriesWriter;
+import com.dremio.support.diagnostics.queriesjson.html.MaxTimeWriter;
+import com.dremio.support.diagnostics.queriesjson.html.MemoryAllocatedWriter;
+import com.dremio.support.diagnostics.queriesjson.html.RequestByQueueWriter;
+import com.dremio.support.diagnostics.queriesjson.html.RequestCounterWriter;
+import com.dremio.support.diagnostics.queriesjson.html.SlowestMetadataRetrievalWriter;
+import com.dremio.support.diagnostics.queriesjson.html.SlowestPlanningWriter;
+import com.dremio.support.diagnostics.queriesjson.reporters.ConcurrentQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.ConcurrentQueueReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.ConcurrentSchemaOpsReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.FailedQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.MaxCPUQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.MaxMemoryQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.MaxTimeReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.MemoryAllocatedReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.RequestCounterReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.RequestsByQueueReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.SlowestMetadataQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.SlowestPlanningQueriesReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.StartFinishReporter;
+import com.dremio.support.diagnostics.queriesjson.reporters.TotalQueriesReporter;
 import com.dremio.support.diagnostics.shared.DQDVersion;
 import com.dremio.support.diagnostics.shared.HtmlTableBuilder;
 import com.dremio.support.diagnostics.shared.HtmlTableDataColumn;
@@ -111,32 +134,35 @@ public class QueriesJsonHtmlReport implements Report {
     final StringBuilder sb = new StringBuilder();
     sb.append(
         """
-    <h3>filters appled</h3>
-<table>
-  <thead>
-    <tr>
-      <th>filter name</th>
-      <th>value</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>start filter</td>
-      <td>%s</td>
-    </tr>
-    <tr>
-      <td>end filter</td>
-      <td>%s</td>
-    </tr>
-  </tbody>
-</table>
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">Filters Applied</h3>
+    <div class="overflow-x-auto mb-6 rounded-lg border border-gray-200">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Filter Name</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Start Filter</td>
+            <td>%s</td>
+          </tr>
+          <tr>
+            <td>End Filter</td>
+            <td>%s</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
 """
             .formatted(startFilter, endFilter));
-    sb.append("<h3>files searched</h3>");
+    sb.append("<h3 class=\"text-lg font-semibold text-gray-800 mb-4\">Files Searched</h3>");
     sb.append(
-        "<table><thead><tr><th>file</th><th>queries parsed</th><th>queries filtered by"
-            + " date</th><td>error</th></tr></thead><tbody>");
+        "<div class=\"overflow-x-auto rounded-lg border border-gray-200\"><table"
+            + " class=\"custom-table\"><thead><tr><th>File</th><th>Queries Parsed</th><th>Queries"
+            + " Filtered by Date</th><th>Error</th></tr></thead><tbody>");
     for (SearchedFile s : filesSearched) {
       sb.append("<tr><td>");
       sb.append(s.name());
@@ -148,9 +174,63 @@ public class QueriesJsonHtmlReport implements Report {
       sb.append(s.errorText());
       sb.append("</td></tr>");
     }
-    sb.append("</tbody></table>");
-    sb.append("</main></body></html>");
+    sb.append("</tbody></table></div>");
     return sb.toString();
+  }
+
+  private String modernizeHtml(String html) {
+    // Apply Tailwind CSS classes to common HTML elements
+
+    // Handle table styling
+    html =
+        html
+            // First update any existing table classes
+            .replace("class=\"sortable\"", "class=\"custom-table sortable\"")
+            .replace("class=\"htmlTable\"", "class=\"custom-table sortable\"")
+            // Then handle tables without classes
+            .replaceAll("<table(?![^>]*class)", "<table class=\"custom-table sortable\"")
+            // Update table elements
+            .replace(
+                "<thead>",
+                "<thead class=\"text-xs text-gray-700 uppercase bg-gray-100 sticky top-0\">")
+            .replace("<tbody>", "<tbody class=\"bg-white divide-y divide-gray-200\">")
+            .replace("<tr>", "<tr class=\"hover:bg-gray-50 transition-colors\">")
+            .replace("<th>", "<th class=\"px-6 py-3 text-left font-medium whitespace-nowrap\">")
+            .replace("<td>", "<td class=\"px-6 py-4 text-sm text-gray-900\">");
+
+    // Wrap tables in overflow containers if not already wrapped
+    if (!html.contains("overflow-x-auto")) {
+      html =
+          html.replaceAll(
+              "(<table[^>]*>)",
+              "<div class=\"overflow-x-auto mb-6 rounded-lg border border-gray-200\">$1");
+      html = html.replace("</table>", "</table></div>");
+    }
+
+    // Style other elements
+    html =
+        html
+            // Style captions
+            .replace(
+                "<caption>",
+                "<caption class=\"text-xl font-bold text-left text-gray-800 mb-4 mt-6\">")
+            // Style buttons
+            .replace(
+                "<button",
+                "<button class=\"px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                    + " transition-colors\"")
+            // Style headings
+            .replace("<h1>", "<h1 class=\"text-2xl font-bold text-gray-900 mb-4\">")
+            .replace("<h2>", "<h2 class=\"text-xl font-semibold text-gray-800 mb-3\">")
+            .replace("<h3>", "<h3 class=\"text-lg font-medium text-gray-700 mb-2\">")
+            .replace("<h4>", "<h4 class=\"text-base font-medium text-gray-600 mb-2\">")
+            // Style paragraphs
+            .replace("<p>", "<p class=\"text-gray-700 mb-2\">")
+            // Style lists
+            .replace("<ul>", "<ul class=\"list-disc list-inside mb-4 text-gray-700\">")
+            .replace("<ol>", "<ol class=\"list-decimal list-inside mb-4 text-gray-700\">");
+
+    return html;
   }
 
   public QueriesJsonHtmlReport(
@@ -208,26 +288,59 @@ public class QueriesJsonHtmlReport implements Report {
     long durationMillis = this.end.toEpochMilli() - this.start.toEpochMilli();
     if (durationMillis < this.bucketSize) {
       return """
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="utf-8">
- <meta name="viewport" content="width=device-width, initial-scale=1"/>
- <title>Queries.json report</title>
- <meta name"description" content="report for queries.json">
- <meta name="author" content="dremio">
- <meta property="og:title" content="queries.json report">
- <meta property="og:type" content="website">
- <meta property="og:description" content="plotly generated graphs for queries.json">
- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css" />
- </head>
- <body>
-     <main>
-      <h3>bucket size is too large</h3>
-      <p>Selected bucket size of %d milliseconds is bigger than the range examined %d of milliseconds. Try again with a bucket size of 1 second</p>
-     </main>
- </body>
- </html>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queries.json Report - DQD Analysis</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-sm p-8 max-w-lg">
+      <div class="text-center">
+        <i class="fas fa-exclamation-triangle text-yellow-500 text-5xl mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Bucket size is too large</h3>
+        <p class="text-gray-600">Selected bucket size of %d milliseconds is bigger than the range examined %d milliseconds.</p>
+        <p class="text-gray-600 mt-2">Try again with a bucket size of 1 second.</p>
+        <a href="/" class="mt-6 inline-block px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+          <i class="fas fa-arrow-left mr-2"></i>Go Back
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
 """
           .formatted(this.bucketSize, durationMillis);
     }
@@ -268,215 +381,316 @@ public class QueriesJsonHtmlReport implements Report {
         FailedQueriesWriter.generateTable(this.failedQueries, this.problematicQueryLimit);
     final String failedParses = this.getFailedParses();
     return """
- <!DOCTYPE html>
- <html lang="en">
- <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Queries.json report</title>
-  <meta name"description" content="report for queries.json">
-  <meta name="author" content="dremio">
-  <meta property="og:title" content="queries.json report">
-  <meta property="og:type" content="website">
-  <meta property="og:description" content="plotly generated graphs for queries.json">
-  <style>
-     html {
-      scroll-behavior: smooth;
-    }
-     table {
-     table-layout:fixed; width: 100%%;
-     }
-     .summary-page {
-         display: grid;
-         grid-template-columns: repeat(3, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
-     }
-     .content-page {
-         display: grid;
-         grid-template-columns: repeat(2, 1fr);
-         grid-gap: 10px;
-         grid-auto-rows: minmax(100px, auto);
-     }
-     .tooltip-pr {
-       overflow: hidden;
-       white-space: nowrap;
-       text-overflow: ellipsis;
-     }
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queries.json Report - DQD Analysis</title>
 
-     .tooltip-pr .tooltiptext-pr {
-       color: black;
-       hyphens: auto;
-     }
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-     .tooltip-pr:hover {
-       cursor: pointer;
-       white-space: initial;
-       transition: height 0.2s ease-in-out;
-     }
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-     /* Style the navbar */
-     #navbar {
-       overflow: hidden;
-       background-color: #333;
-       z-index: 289;
-     }
-
-     /* Navbar links */
-     #navbar a {
-       float: left;
-       display: block;
-       color: #f2f2f2;
-       text-align: center;
-       padding: 14px;
-       text-decoration: none;
-     }
-       #navbar .active-link {
-         color: white;
-         background-color: green;
-       }
-
-     /* Page content */
-     .content {
-       //padding-top: 50px;
-     }
-
-     /* The sticky class is added to the navbar with JS when it reaches its scroll position */
-     .sticky {
-       position: fixed;
-       top: 0;
-       width: 100%%;
-     }
-
-     /* Add some top padding to the page content to prevent sudden quick movement (as the navigation bar gets a new position at the top of the page (position:fixed and top:0) */
-     .sticky + .content {
-       padding-top: 100px;
-     }
- </style>
-  <style>
-    %s
-  </style>
-  <script>
-    %s
-  </script>
-  <script>
-   %s
-  </script>
-  <style>
-    %s
-  </style>
-  <script>
-    %s
-  </script>
-  <script>
-    %s
-  </script>
-
- </head>
- <body>
- <div id="navbar">
-   <div style="float: left;">
-   <h3 style="color: white" >queries.json report</h3>
-   </div>
-   <div style="float:right;">
-   <a class="nav-link" href="#summary-section">Summary</a>
-   <a class="nav-link" href="#outliers-section">Outliers</a>
-   <a class="nav-link" href="#usage-section">Usage</a>
-   <a class="nav-link" href="#failures-section">Failures</a>
-    <a class="nav-link" href="#report-section">Report Debugging</a>
-   </div>
- </div>
- <main class="content">
- <section id="summary-section">
- <h3>Summary</h3>
- <div class="summary-page">
-  <div>%s</div>
-  <div>%s</div>
-  <div>%s</div>
- </div>
- </section>
- <section id="outliers-section">
- <h3>Outliers</h3>
- <div class="content-page">
-  <div>%s</div>
-  <div>%s</div>
-  <div>%s</div>
-  <div>%s</div>
- </div>
- </section>
- <section id="usage-section">
- <h3>Usage</h3>
- %s
- %s
- %s
- </section>
- <section id="failures-section">
- <h3>Failures</h3>
- %s
- </section>
-<section id="report-section">
- <h3>Report Debugging</h3>
- %s
- </section>
- </main>
- <script>
-   // When the user scrolls the page, execute myFunction
-   window.onscroll = function() {stickNav()};
-
-   // Get the navbar
-   var navbar = document.getElementById("navbar");
-
-   // Get the offset position of the navbar
-   var sticky = navbar.offsetTop;
-
-   // Add the sticky class to the navbar when you reach its scroll position. Remove "sticky" when you leave the scroll position
-   function stickNav() {
-     if (window.pageYOffset >= sticky) {
-       navbar.classList.add("sticky")
-     } else {
-       navbar.classList.remove("sticky");
-     }
-   }
- </script>
-<script>
-    const sections = document.querySelectorAll('section');
-    const links = document.querySelectorAll('a.nav-link');
-
-    window.addEventListener('scroll', () => {
-        let scrollPosition = window.scrollY + 80;
-        sections.forEach(section => {
-            if (scrollPosition >= section.offsetTop) {
-                links.forEach(link => {
-                    link.classList.remove('active-link');
-                    if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
-                        link.classList.add('active-link');
-                    }
-                });
+    <!-- Custom Tailwind config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+              }
             }
-        });
-    });
-  </script>
- </body>
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /* Custom table styles */
+      .custom-table {
+        @apply w-full text-sm text-left text-gray-700 border-collapse;
+      }
+
+      .custom-table thead {
+        @apply text-xs text-gray-700 uppercase bg-gray-100 border-b-2 border-gray-200;
+      }
+
+      .custom-table thead th {
+        @apply px-6 py-3 font-semibold tracking-wider text-left;
+      }
+
+      .custom-table tbody {
+        @apply bg-white divide-y divide-gray-200;
+      }
+
+      .custom-table tbody tr {
+        @apply hover:bg-gray-50 transition-colors;
+      }
+
+      .custom-table tbody td {
+        @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+      }
+
+      /* Table wrapper */
+      .table-wrapper {
+        @apply overflow-x-auto rounded-lg border border-gray-200;
+      }
+
+      /* Tooltip styles */
+      .tooltip-pr {
+        @apply overflow-hidden whitespace-nowrap text-ellipsis;
+      }
+
+      .tooltip-pr:hover {
+        @apply cursor-pointer whitespace-normal;
+        transition: height 0.2s ease-in-out;
+      }
+
+      /* Section styling */
+      section {
+        scroll-margin-block-start: 100px;
+      }
+
+      /* Sticky navigation */
+      #navbar {
+        @apply transition-all duration-300;
+      }
+
+      #navbar.sticky {
+        @apply fixed top-0 w-full shadow-lg z-50;
+      }
+
+      .content {
+        @apply transition-all duration-300;
+      }
+
+      #navbar.sticky + .content {
+        @apply pt-24;
+      }
+
+      /* Active nav link */
+      .nav-link.active-link {
+        @apply bg-primary-100 text-primary-700;
+      }
+
+      /* Sortable table styles */
+      .sortable th {
+        @apply cursor-pointer select-none relative pr-8;
+      }
+
+      .sortable th:hover {
+        @apply bg-gray-200;
+      }
+
+      .sortable th::after {
+        @apply absolute right-2 text-gray-400 text-xs;
+        content: " ↕";
+      }
+
+      .sortable th.sorted-asc::after {
+        @apply text-primary-600;
+        content: " ↑";
+      }
+
+      .sortable th.sorted-desc::after {
+        @apply text-primary-600;
+        content: " ↓";
+      }
+
+      /* Grid layouts */
+      .summary-page {
+        @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+      }
+
+      .content-page {
+        @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
+      }
+
+      /* Card styling */
+      .card {
+        @apply bg-white rounded-lg shadow-sm p-6;
+      }
+
+      /* Button styles */
+      button {
+        @apply px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors;
+      }
+
+      %s
+    </style>
+
+    <script>
+      %s
+    </script>
+    <script>
+      %s
+    </script>
+    <script>
+      %s
+    </script>
+    <script>
+      %s
+    </script>
+  </head>
+  <body class="bg-gray-50">
+    <!-- Navigation Bar -->
+    <nav id="navbar" class="bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <i class="fas fa-database text-white text-xl"></i>
+              </div>
+              <div>
+                <h1 class="text-xl font-bold text-gray-800">Queries.json Report</h1>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-1 overflow-x-auto">
+            <a href="/" class="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-shrink-0">
+              <i class="fas fa-home mr-2"></i>Home
+            </a>
+            <a class="nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#summary-section">Summary</a>
+            <a class="nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#outliers-section">Outliers</a>
+            <a class="nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#usage-section">Usage</a>
+            <a class="nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#failures-section">Failures</a>
+            <a class="nav-link text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors" href="#report-section">Report Debugging</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+          <i class="fas fa-chart-bar mr-3 text-primary-600"></i>
+          Queries.json Analysis
+        </h1>
+      </div>
+
+      <section id="summary-section" class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-info-circle mr-2 text-primary-600"></i>
+          Summary
+        </h2>
+        <div class="summary-page">
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+        </div>
+      </section>
+
+      <section id="outliers-section" class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-exclamation-triangle mr-2 text-yellow-600"></i>
+          Outliers
+        </h2>
+        <div class="content-page">
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+        </div>
+      </section>
+
+      <section id="usage-section" class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-chart-line mr-2 text-primary-600"></i>
+          Usage
+        </h2>
+        <div class="space-y-6">
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+          <div class="card">%s</div>
+        </div>
+      </section>
+
+      <section id="failures-section" class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-times-circle mr-2 text-red-600"></i>
+          Failures
+        </h2>
+        <div class="card">%s</div>
+      </section>
+
+      <section id="report-section" class="mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-bug mr-2 text-purple-600"></i>
+          Report Debugging
+        </h2>
+        <div class="card">%s</div>
+      </section>
+    </main>
+
+    <script>
+      // Sticky navigation
+      window.onscroll = function() {stickNav()};
+
+      var navbar = document.getElementById("navbar");
+      var sticky = navbar.offsetTop;
+
+      function stickNav() {
+        if (window.pageYOffset >= sticky) {
+          navbar.classList.add("sticky")
+        } else {
+          navbar.classList.remove("sticky");
+        }
+      }
+
+      // Active navigation highlighting
+      const sections = document.querySelectorAll('section');
+      const links = document.querySelectorAll('a.nav-link');
+
+      window.addEventListener('scroll', () => {
+          let scrollPosition = window.scrollY + 100;
+          sections.forEach(section => {
+              if (scrollPosition >= section.offsetTop) {
+                  links.forEach(link => {
+                      link.classList.remove('active-link');
+                      if (section.getAttribute('id') === link.getAttribute('href').substring(1)) {
+                          link.classList.add('active-link');
+                      }
+                  });
+              }
+          });
+      });
+    </script>
+  </body>
+</html>
 """
         .formatted(
-            jsLibraryTextProvider.getTableCSS(),
+            jsLibraryTextProvider.getSortableCSSText(),
             jsLibraryTextProvider.getPlotlyJsText(),
             jsLibraryTextProvider.getCSVExportText(),
-            jsLibraryTextProvider.getSortableCSSText(),
             jsLibraryTextProvider.getSortableText(),
             jsLibraryTextProvider.getFilterTableText(),
-            summaryText,
-            requestCounter,
-            requestQueueCounter,
-            slowestMetadataQueries,
-            slowestPlanningQueries,
-            maxCpuTime,
-            maxMemoryQueries,
-            totalCountsJs,
-            maxValuesJs,
-            memoryAllocatedJs,
-            failedQueries,
-            failedParses);
+            modernizeHtml(summaryText),
+            modernizeHtml(requestCounter),
+            modernizeHtml(requestQueueCounter),
+            modernizeHtml(slowestMetadataQueries),
+            modernizeHtml(slowestPlanningQueries),
+            modernizeHtml(maxCpuTime),
+            modernizeHtml(maxMemoryQueries),
+            modernizeHtml(totalCountsJs),
+            modernizeHtml(maxValuesJs),
+            modernizeHtml(memoryAllocatedJs),
+            modernizeHtml(failedQueries),
+            modernizeHtml(failedParses));
   }
 
   @Override
@@ -488,58 +702,70 @@ public class QueriesJsonHtmlReport implements Report {
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="utf-8">
- <meta name="viewport" content="width=device-width, initial-scale=1"/>
- <title>Queries.json report</title>
- <meta name"description" content="report for queries.json">
- <meta name="author" content="dremio">
- <meta property="og:title" content="queries.json report">
- <meta property="og:type" content="website">
- <meta property="og:description" content="plotly generated graphs for queries.json">
- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css" />
-</head>
-<body>
-<main>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queries.json Report - DQD Analysis</title>
 
-<h2>no queries found</h2>
-<h3>filters appled</h3>
-<table>
-  <thead>
-    <tr>
-      <th>filter name</th>
-      <th>value</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>start filter</td>
-      <td>%s</td>
-    </tr>
-    <tr>
-      <td>end filter</td>
-      <td>%s</td>
-    </tr>
-  </tbody>
-</table>
-"""
-                  .formatted(startFilter, endFilter));
-      sb.append("<h3>files searched</h3>");
-      sb.append(
-          "<table><thead><tr><th>file</th><th>queries filtered by date</th></tr></thead><tbody>");
-      for (SearchedFile s : filesSearched) {
-        sb.append("<tr><td>");
-        sb.append(s.name());
-        sb.append("</td><td>");
-        sb.append(s.filtered());
-        sb.append("</td></tr>");
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
       }
-      sb.append("</tbody></table>");
-      sb.append("</main></body></html>");
-      return sb.toString();
-    } else {
-      LOGGER.info(() -> this.totalQueries + " queries parsed");
     }
-    return this.getQueriesJSONHtml();
+  </script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-sm p-8 max-w-2xl w-full">
+      <div class="text-center mb-6">
+        <i class="fas fa-info-circle text-blue-500 text-5xl mb-4"></i>
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">No Queries Found</h1>
+        <p class="text-gray-600 mb-6">No queries matched the filter criteria in the uploaded file.</p>
+      </div>
+
+      <div class="bg-gray-50 rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Report Details</h2>
+""");
+      sb.append(modernizeHtml(this.getFailedParses()));
+      sb.append(
+          """
+      </div>
+
+      <div class="text-center">
+        <a href="/" class="inline-block px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+          <i class="fas fa-arrow-left mr-2"></i>Try Another File
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+""");
+      return sb.toString();
+    }
+    return getQueriesJSONHtml();
   }
 
   private String generateSummary() {

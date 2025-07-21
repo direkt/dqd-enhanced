@@ -53,3 +53,15 @@ coverage.out
 # mac directory files
 
 .DS_Store
+
+# Node.js dependencies and lock files
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+# Claude AI configuration files
+.clinerules-*
+CLAUDE.md
+
+# Test files
+test-ttop.txt

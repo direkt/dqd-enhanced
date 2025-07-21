@@ -2,494 +2,1005 @@
 <html lang="en">
 
 <head>
-    <title>DQD Analysis page</title>
+    <title>DQD - Dremio Query Doctor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="google" content="notranslate">
     <link rel="shortcut icon" type="image/png" href="/img/favicon-small.png" />
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.0.8/dist/cdn/beer.min.css" rel="stylesheet">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.0.8/dist/cdn/beer.min.js"></script>
-    <script type="module"
-        src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@0.1.5/dist/cdn/material-dynamic-colors.min.js"></script>
-    <style>
-        :root,
-        body.light {
-            --primary: #006493;
-            --on-primary: #ffffff;
-            --primary-container: #cae6ff;
-            --on-primary-container: #001e30;
-            --secondary: #50606e;
-            --on-secondary: #ffffff;
-            --secondary-container: #d3e5f5;
-            --on-secondary-container: #0c1d29;
-            --tertiary: #65587b;
-            --on-tertiary: #ffffff;
-            --tertiary-container: #ebddff;
-            --on-tertiary-container: #201634;
-            --error: #ba1a1a;
-            --on-error: #ffffff;
-            --error-container: #ffdad6;
-            --on-error-container: #410002;
-            --background: #fcfcff;
-            --on-background: #1a1c1e;
-            --surface: #fcfcff;
-            --on-surface: #1a1c1e;
-            --surface-variant: #dde3ea;
-            --on-surface-variant: #41474d;
-            --outline: #72787e;
-            --outline-variant: #c1c7ce;
-            --scrim: #000000;
-            --inverse-surface: #2e3133;
-            --inverse-on-surface: #f0f0f3;
-            --inverse-primary: #8dcdff;
-        }
-    </style>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom configuration for Tailwind -->
     <script>
-        async function setVersion() {
-            const response = await fetch("/about.json");
-            const aboutJson = await response.json();
-            console.log(aboutJson);
-            const version = aboutJson["version"];
-            document.querySelectorAll('.about_version').forEach((h) => h.innerText = "DQD " + version);
-        }
-
-        function showButton(that, numFiles, buttonId) {
-            let filesSelected = that.files.length
-            if (filesSelected === numFiles) {
-                document.querySelector('#' + buttonId).disabled = false;
-            } else {
-                document.querySelector('#' + buttonId).disabled = true;
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        accent: {
+                            orange: {
+                                50: '#fff7ed',
+                                100: '#ffedd5',
+                                200: '#fed7aa',
+                                300: '#fdba74',
+                                400: '#fb923c',
+                                500: '#f97316',
+                                600: '#ea580c',
+                                700: '#c2410c',
+                                800: '#9a3412',
+                                900: '#7c2d12',
+                            },
+                            red: {
+                                50: '#fef2f2',
+                                100: '#fee2e2',
+                                200: '#fecaca',
+                                300: '#fca5a5',
+                                400: '#f87171',
+                                500: '#ef4444',
+                                600: '#dc2626',
+                                700: '#b91c1c',
+                                800: '#991b1b',
+                                900: '#7f1d1d',
+                            },
+                            purple: {
+                                50: '#faf5ff',
+                                100: '#f3e8ff',
+                                200: '#e9d5ff',
+                                300: '#d8b4fe',
+                                400: '#c084fc',
+                                500: '#a855f7',
+                                600: '#9333ea',
+                                700: '#7c3aed',
+                                800: '#6b21a8',
+                                900: '#581c87',
+                            },
+                            green: {
+                                50: '#ecfdf5',
+                                100: '#d1fae5',
+                                200: '#a7f3d0',
+                                300: '#6ee7b7',
+                                400: '#34d399',
+                                500: '#10b981',
+                                600: '#059669',
+                                700: '#047857',
+                                800: '#065f46',
+                                900: '#064e3b',
+                            }
+                        }
+                    }
+                }
             }
-        };
-        function showLoader() {
-            document.getElementById("loader").classList.add('active');
-        };
-        window.addEventListener("pageshow", () => {
-            setVersion();
-            document.getElementById("loader").className = 'modal';
-            const theDate120DaysAgo = new Date();
-            theDate120DaysAgo.setDate(theDate120DaysAgo.getDate() - 120);
-
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-
-            const startDatePicker = document.getElementById("start-date-queries")
-            const startDate = theDate120DaysAgo.toISOString().substring(0, 10);
-            startDatePicker.value = startDate;
-            document.getElementById("end-date-queries").value = tomorrow.toISOString().substring(0, 10);
-        });
+        }
     </script>
+    
     <style>
-        section:not(:target):not(#home),
-        section:target~#home {
-            display: none;
+        /* Custom animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* DQD Unified Component Styles */
+        .dqd-card {
+            @apply bg-white rounded-lg shadow-sm p-6 mb-6;
+        }
+        
+        .dqd-card-header {
+            @apply flex items-center mb-6;
+        }
+        
+        .dqd-icon-container {
+            @apply w-12 h-12 rounded-xl flex items-center justify-center mr-4;
+        }
+        
+        .dqd-page-title {
+            @apply text-2xl font-bold text-gray-800;
+        }
+        
+        .dqd-page-subtitle {
+            @apply text-gray-600 mt-1;
+        }
+        
+        .dqd-info-banner {
+            @apply bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 mb-8;
+        }
+        
+        .dqd-btn-primary {
+            @apply w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium;
+        }
+        
+        .dqd-upload-area {
+            @apply mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors;
+        }
+        
+        .dqd-feature-grid {
+            @apply grid grid-cols-1 md:grid-cols-3 gap-4 mb-8;
+        }
+        
+        .dqd-feature-item {
+            @apply bg-gray-50 rounded-lg p-4;
+        }
+        
+        .dqd-gradient-header {
+            @apply bg-gradient-to-r shadow-lg sticky top-0 z-50;
+        }
+        
+        .dqd-footer {
+            @apply bg-gray-800 text-white py-8 mt-12;
+        }
+        
+        /* Loading spinner */
+        .loader {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #0ea5e9;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 
-<body>
-    <nav class="left m l">
-        <a href="#">
-            <i>home</i>
-            <div>Home</div>
-        </a>
-        <a href="#profile">
-            <i>table_rows</i>
-            <div>Simple Profile Analysis</div>
-        </a>
-        <a href="#profile-detailed">
-            <i>equalizer</i>
-            <div>Detailed Profile Analysis</div>
-        </a>
-        <a href="#profiles-comparison">
-            <i>compare_arrows</i>
-            <div>Profile Comparison</div>
-        </a>
-        <a href="#queries-json">
-            <i>equalizer</i>
-            <div>Queries.json Analysis</div>
-        </a>
-        <a href="#schema">
-            <i>database</i>
-            <div>Schema Generation</div>
-        </a>
-        <a href="#iostat-analysis">
-            <i>computer</i>
-            <div>IOStat</div>
-        </a>
-        <a href="#top-analysis">
-            <i>vertical_align_top</i>
-            <div>Threaded Top</div>
-        </a>
-    </nav>
-    <main class="responsive">
-        <section id="queries-json">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>Queries.JSON Tool Purpose</h5>
-                <p>Queries.json file analysis and summary, for maximum report resolution limit files to a day, 30 days
-                    now officially supported</p>
-            </article>
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="detailed-queries-form" method="POST" enctype="multipart/form-data" action="/queriesjson">
-                    <caption>Detailed Report</caption>
-                    <fieldset>
-                        <div class="grid">
-                            <div class="s3">
-                                <div class="field label prefix border classic-report">
-                                    <input id="start-date-queries" type="date" name="start_date" />
-                                    <label>Start Date</label>
-                                    <i>today</i>
-                                    <span class="helper">filter queries that start before this date</span>
-                                </div>
-                            </div>
-                            <div class="s3">
-                                <div class="field label prefix border classic-report">
-                                    <i>schedule</i>
-                                    <input type="time" name="start_time" value="00:00" />
-                                    <label>Start Time</label>
-                                    <span class="helper">filter queries that start before this time</span>
-                                </div>
-                            </div>
-                            <div class="s3">
-                                <div class="field label prefix border classic-report">
-                                    <input id="end-date-queries" type="date" name="end_date" />
-                                    <label>End Date</label>
-                                    <i>today</i>
-                                    <span class="helper">filter queries that start after this date</span>
-                                </div>
-                            </div>
-                            <div class="s3">
-                                <div class="field label prefix border classic-report">
-                                    <i>schedule</i>
-                                    <input type="time" name="end_time" value="00:00" />
-                                    <label>End Time</label>
-                                    <span class="helper">filter queries that end after this time</span>
-                                </div>
-                            </div>
-                            <div class="s6">
-                                <div class="field prefix border classic-report">
-                                    <select name="limit">
-                                        <option value="1">1 </option>
-                                        <option default value="5">5</option>
-                                        <option value="25">25</option>
-                                        <option value="100">100</option>
-                                        <option value="1000">1000</option>
-                                    </select><i>arrow_drop_down</i>
-                                    <span class="helper">number of problematic queries per category (more is
-                                        slower)</span>
-                                </div>
-
-                            </div>
-                            <div class="s6">
-                                <div class="field prefix border classic-report">
-                                    <select name="window">
-                                        <option value="1000">1 Second</option>
-                                        <option selected="selected" value="60000">1 Minute</option>
-                                        <option value="86400000">Daily</option>
-                                    </select><i>arrow_drop_down</i>
-                                    <span class="helper">Bucket size</span>
-                                </div>
-                            </div>
-                            <div class="s12">
-                                <input name="query_report_type" type="hidden" value="INTERACTIVE" />
-                                <div class="field label prefix suffix border">
-                                    <i>attach_file</i>
-                                    <input type="text">
-                                    <input type="file" name="queriesjson" accept=".tar, .tar.gz, .tgz, tar.xz, tar.bzip2, .bzip2, .gz, .zip, .json"
-                                        onchange="showButton(this, 1, 'detailed-queriesjson-btn');">
-                                    <label>Queries.json (text file, .tar, .tar.gz, .tgz, tar.xz, tar.bzip2, .bzip2, .gz, .zip, .json)</label>
-                                    <span class="helper">attach one profile in an archive file or as raw
-                                        text</span>
-                                    <i>attach_file</i>
-                                </div>
-                            </div>
-                        </div>
-                        <button id="detailed-queriesjson-btn" disabled onclick="showLoader();">analyze</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="profiles-comparison">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>Profile Comparison Tool Purpose</h5>
-                <p>Quickly compare 2 profile.json files against one another</p>
-            </article>
-
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="detailed-profiles-form" method="POST" enctype="multipart/form-data" action="/profiles">
-                    <caption>Detailed Report</caption>
-                    <fieldset>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="compare_profile" multiple="multiple"
-                                accept=".tar, .gz, .tgz, .zip, .json"
-                                onchange="showButton(this, 2, 'detailed-profiles-btn');">
-                            <label>Select 2 profile.json or archive files</label>
-                            <span class="helper">attach two profiles in separate text or archive files (*.tar, *.gz.,
-                                *.tgz, *.zip)</span>
-                            <i>attach_file</i>
-                        </div>
-                        <button id="detailed-profiles-btn" disabled onclick="showLoader();">compare</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="profile">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>Single Profile Tool Purpose</h5>
-                <p>Searchable, Sortable, Exportable view of all Operators</p>
-            </article>
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="simple-profile-form" method="POST" enctype="multipart/form-data" action="/simple-profile">
-                    <caption>Summary Report</caption>
-                    <fieldset>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="profile1" accept=".tar, .gz, .tgz, .zip, .json"
-                                onchange="showButton(this, 1, 'simple-profile-btn');">
-                            <label>Profiles</label>
-                            <span class="helper">attach one profile in separate text or archive files (*.tar, *.gz.,
-                                *.tgz, *.zip)</span>
-                            <i>attach_file</i>
-                        </div>
-
-                        <button id="simple-profile-btn" disabled onclick="showLoader();">analyze</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="profile-detailed">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>Single Profile Tool Purpose</h5>
-                <p>In depth review of a profile, row estimates, node level operator resource usage</p>
-            </article>
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="detailed-profile-form" method="POST" enctype="multipart/form-data"
-                    action="/profile">
-                    <caption>Detailed Report</caption>
-                    <fieldset>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="profile1" accept=".tar, .gz, .tgz, .zip, .json"
-                                onchange="showButton(this, 1, 'detailed-profile-btn');">
-                            <label>Profiles</label>
-                            <span class="helper">attach one profile in separate text or archive files (*.tar, *.gz.,
-                                *.tgz, *.zip)</span>
-                            <i>attach_file</i>
-                        </div>
-                        <button id="detailed-profile-btn" disabled onclick="showLoader();">analyze</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="iostat-analysis">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>IOSTAT Analyzer</h5>
-                <p>Using the output of "iostat -x -c -d -t 1 600" we can say a lot of things about a disk or a system</p>
-            </article>
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="iostat-form" method="POST" enctype="multipart/form-data"
-                    action="/iostat">
-                    <caption>IOSTAT Analysis</caption>
-                    <fieldset>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="iostatfile" 
-                                onchange="showButton(this, 1, 'iostat-btn');">
-                            <label>iostat files</label>
-                            <span class="helper">attach one iostat file run the following flags (-x -c -d -t 1)</span>
-                            <i>attach_file</i>
-                        </div>
-                        <button id="iostat-btn" disabled onclick="showLoader();">analyze</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="top-analysis">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>thread TOP Analyzer</h5>
-                <p>BETA: Using the output of "LINES=100 top -H -n 120 -p 1 -d 2 -bw" which comes from DDC. We can say a lot about the system, will not work with other top output</p>
-            </article>
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form id="top-form" method="POST" enctype="multipart/form-data"
-                    action="/ttop">
-                    <caption>Thread TOP Analysis</caption>
-                    <fieldset>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="ttop" 
-                                onchange="showButton(this, 1, 'ttop-btn');">
-                            <label>ttop.txt</label>
-                            <span class="helper">attach one top file run the following flags (LINES=100 top -H -n 120 -p 1 -d 2 -bw)</span>
-                            <i>attach_file</i>
-                        </div>
-                        <button id="ttop-btn" disabled onclick="showLoader();">analyze</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="schema">
-            <header class="responsive">
-                <nav>
-                    <h4 class="max center-align about_version">DQD </h4>
-                </nav>
-            </header>
-            <article class="fill">
-                <h5>Schema Generator Tool Purpose</h5>
-                <p>Also known as the <b>reproduction tool</b>, it will creates scripts that one can use to recreate the
-                    sources, PDS and VDS used in the profile.json.
-            </article>
-
-            <article class="fill">
-                <h5>Directions - Schema Generator</h5>
-                <div class="row">
-                    <div>1. Upload profile.json (in zip or extracted) and click upload you will receive a zip file</div>
-                </div>
-                <div class="row">
-                    <div>2. Extract zip</div>
-                </div>
-                <div class="row">
-                    <div>3. Open terminal (Mac, WSL or Linux) and go to folder where you extracted zip</div>
-                </div>
-                <div class="row">
-                    <div>4. Run <b>bash create.sh --host "http://localhost:9047" -u "myuser" -p "mypass"</b></div>
-                </div>
-                <div class="row">
-                    <div>5. If script fails consult the debug.sql and look for issues in sql statements</div>
-                </div>
-                <div class="row">
-                    <div>6. Also consider manually creating any missing data sources and try running the script again
+<body class="bg-gray-50" x-data="{ 
+    currentSection: window.location.hash || '#home',
+    sidebarOpen: false,
+    version: '',
+    loading: false,
+    modalOpen: false,
+    async init() {
+        await this.setVersion();
+        this.setupDatePickers();
+        window.addEventListener('hashchange', () => {
+            this.currentSection = window.location.hash || '#home';
+        });
+    },
+    async setVersion() {
+        try {
+            const response = await fetch('/about.json');
+            const aboutJson = await response.json();
+            this.version = aboutJson.version;
+        } catch(e) {
+            console.error('Failed to fetch version:', e);
+        }
+    },
+    setupDatePickers() {
+        const theDate120DaysAgo = new Date();
+        theDate120DaysAgo.setDate(theDate120DaysAgo.getDate() - 120);
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const startDatePicker = document.getElementById('start-date-queries');
+        if (startDatePicker) {
+            startDatePicker.value = theDate120DaysAgo.toISOString().substring(0, 10);
+        }
+        const endDatePicker = document.getElementById('end-date-queries');
+        if (endDatePicker) {
+            endDatePicker.value = tomorrow.toISOString().substring(0, 10);
+        }
+    },
+    showLoader() {
+        this.loading = true;
+    },
+    checkFileCount(input, expectedCount, buttonId) {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = input.files.length !== expectedCount;
+        }
+    }
+}">
+    <!-- Sidebar -->
+    <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300"
+         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+        <div class="flex flex-col h-full">
+            <!-- Logo -->
+            <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-stethoscope text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800">DQD</h1>
+                        <p class="text-xs text-gray-500" x-text="version ? `v${version}` : 'Loading...'"></p>
                     </div>
                 </div>
-            </article>
-            <div class="modal" id="modal">
-                <h5>Example Column Override Yaml</h5>
-                <pre><code>
-tables:
+                <button @click="sidebarOpen = false" class="lg:hidden">
+                    <i class="fas fa-times text-gray-500"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-4">
+                <a href="#home" 
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#home' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-home w-6"></i>
+                    <span class="ml-3">Home</span>
+                </a>
+                
+                <div class="mt-4 px-4">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Profile Analysis</p>
+                </div>
+                
+                <a href="#profile"
+                   @click="sidebarOpen = false" 
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#profile' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-table w-6"></i>
+                    <span class="ml-3">Simple Profile Analysis</span>
+                </a>
+                
+                <a href="#profile-detailed"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#profile-detailed' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-chart-line w-6"></i>
+                    <span class="ml-3">Detailed Profile Analysis</span>
+                </a>
+                
+                <a href="#profiles-comparison"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#profiles-comparison' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-code-compare w-6"></i>
+                    <span class="ml-3">Profile Comparison</span>
+                </a>
+                
+                <div class="mt-4 px-4">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Query Analysis</p>
+                </div>
+                
+                <a href="#queries-json"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#queries-json' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-database w-6"></i>
+                    <span class="ml-3">Queries.json Analysis</span>
+                </a>
+                
+                <div class="mt-4 px-4">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tools</p>
+                </div>
+                
+                <a href="#schema"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#schema' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-code w-6"></i>
+                    <span class="ml-3">Schema Generation</span>
+                </a>
+                
+                <a href="#iostat-analysis"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#iostat-analysis' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-hard-drive w-6"></i>
+                    <span class="ml-3">IOStat Analysis</span>
+                </a>
+                
+                <a href="#top-analysis"
+                   @click="sidebarOpen = false"
+                   class="flex items-center px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors duration-200"
+                   :class="currentSection === '#top-analysis' ? 'bg-primary-50 text-primary-700 border-r-4 border-primary-700' : ''">
+                    <i class="fas fa-microchip w-6"></i>
+                    <span class="ml-3">Threaded Top</span>
+                </a>
+            </nav>
+            
+            <!-- Footer -->
+            <div class="p-4 border-t border-gray-200">
+                <a href="https://github.com/rsvihladremio/dqd" 
+                   target="_blank"
+                   class="flex items-center text-sm text-gray-500 hover:text-primary-600 transition-colors duration-200">
+                    <i class="fab fa-github mr-2"></i>
+                    View on GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile sidebar toggle -->
+    <button @click="sidebarOpen = true" 
+            class="fixed top-4 left-4 z-40 lg:hidden bg-white p-2 rounded-lg shadow-md">
+        <i class="fas fa-bars text-gray-700"></i>
+    </button>
+    
+    <!-- Main content -->
+    <div class="lg:ml-64 min-h-screen">
+        <!-- Content sections -->
+        <div class="p-4 lg:p-8">
+            <!-- Home Section -->
+            <section x-show="currentSection === '#home'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mr-4">
+                                <i class="fas fa-stethoscope text-primary-600 text-2xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-800">Dremio Query Doctor</h1>
+                                <p class="text-gray-600">Profile.json and Queries.json Analysis Tools</p>
+                            </div>
+                        </div>
+                        
+                        <div class="prose max-w-none">
+                            <p class="text-gray-700 leading-relaxed">
+                                Welcome to DQD - a comprehensive suite of analysis tools designed by the Support Tooling Team 
+                                to help diagnose and optimize Dremio query performance. Upload your diagnostic files and get 
+                                detailed insights into query execution, system performance, and potential optimizations.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Start Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <a href="#profile" class="group">
+                            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+                                    <i class="fas fa-table text-blue-600 text-xl"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Simple Profile Analysis</h3>
+                                <p class="text-gray-600 text-sm">Get a searchable, sortable view of all operators</p>
+                            </div>
+                        </a>
+                        
+                        <a href="#profile-detailed" class="group">
+                            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
+                                    <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Detailed Profile Analysis</h3>
+                                <p class="text-gray-600 text-sm">In-depth review with row estimates and resource usage</p>
+                            </div>
+                        </a>
+                        
+                        <a href="#queries-json" class="group">
+                            <div class="bg-white rounded-xl shadow-sm p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
+                                    <i class="fas fa-database text-purple-600 text-xl"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2">Queries.json Analysis</h3>
+                                <p class="text-gray-600 text-sm">Analyze query patterns and performance trends</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Queries JSON Section -->
+            <section x-show="currentSection === '#queries-json'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-database text-purple-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Queries.JSON Analysis</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Analyze queries.json files with date filtering and bucketing. For optimal performance, 
+                            limit analysis to 30 days of data.
+                        </p>
+                        
+                        <form id="detailed-queries-form" method="POST" enctype="multipart/form-data" action="/queriesjson"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <!-- Date Range -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-alt mr-1"></i> Start Date & Time
+                                        </label>
+                                        <div class="flex space-x-2">
+                                            <input id="start-date-queries" type="date" name="start_date" 
+                                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"/>
+                                            <input type="time" name="start_time" value="00:00"
+                                                   class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"/>
+                                        </div>
+                                        <p class="mt-1 text-sm text-gray-500">Filter queries starting after this date/time</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-check mr-1"></i> End Date & Time
+                                        </label>
+                                        <div class="flex space-x-2">
+                                            <input id="end-date-queries" type="date" name="end_date"
+                                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"/>
+                                            <input type="time" name="end_time" value="00:00"
+                                                   class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"/>
+                                        </div>
+                                        <p class="mt-1 text-sm text-gray-500">Filter queries ending before this date/time</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Options -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-list-ol mr-1"></i> Query Limit
+                                        </label>
+                                        <select name="limit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                            <option value="1">1 query</option>
+                                            <option value="5" selected>5 queries</option>
+                                            <option value="25">25 queries</option>
+                                            <option value="100">100 queries</option>
+                                            <option value="1000">1000 queries</option>
+                                        </select>
+                                        <p class="mt-1 text-sm text-gray-500">Problematic queries per category</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            <i class="fas fa-clock mr-1"></i> Time Window
+                                        </label>
+                                        <select name="window" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                            <option value="1000">1 Second</option>
+                                            <option value="60000" selected>1 Minute</option>
+                                            <option value="86400000">Daily</option>
+                                        </select>
+                                        <p class="mt-1 text-sm text-gray-500">Bucket size for analysis</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- File Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload Queries.json
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Upload a file</span>
+                                                    <input type="file" name="queriesjson" class="sr-only"
+                                                           accept=".tar, .tar.gz, .tgz, tar.xz, tar.bzip2, .bzip2, .gz, .zip, .json"
+                                                           @change="checkFileCount($event.target, 1, 'detailed-queriesjson-btn')">
+                                                </label>
+                                                <p class="pl-1">or drag and drop</p>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                .json, .tar, .tar.gz, .tgz, .zip, .gz files accepted
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <input name="query_report_type" type="hidden" value="INTERACTIVE" />
+                                
+                                <button id="detailed-queriesjson-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-chart-line mr-2"></i> Analyze Queries
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Profile Comparison Section -->
+            <section x-show="currentSection === '#profiles-comparison'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-code-compare text-indigo-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Profile Comparison</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Compare two profile.json files to identify performance differences and optimizations.
+                        </p>
+                        
+                        <form id="detailed-profiles-form" method="POST" enctype="multipart/form-data" action="/profiles"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-files-o mr-1"></i> Select Two Profile Files
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-file-archive text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Select two files</span>
+                                                    <input type="file" name="compare_profile" multiple="multiple" class="sr-only"
+                                                           accept=".tar, .gz, .tgz, .zip, .json"
+                                                           @change="checkFileCount($event.target, 2, 'detailed-profiles-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                Select exactly 2 profile files (.json, .tar, .gz, .tgz, .zip)
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="detailed-profiles-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-balance-scale mr-2"></i> Compare Profiles
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Simple Profile Section -->
+            <section x-show="currentSection === '#profile'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-table text-blue-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Simple Profile Analysis</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Get a searchable, sortable, and exportable view of all operators in your profile.
+                        </p>
+                        
+                        <form id="simple-profile-form" method="POST" enctype="multipart/form-data" action="/simple-profile"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload Profile
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-file-code text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Choose file</span>
+                                                    <input type="file" name="profile1" class="sr-only"
+                                                           accept=".tar, .gz, .tgz, .zip, .json"
+                                                           @change="checkFileCount($event.target, 1, 'simple-profile-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                .json, .tar, .gz, .tgz, .zip files accepted
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="simple-profile-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-search mr-2"></i> Analyze Profile
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Detailed Profile Section -->
+            <section x-show="currentSection === '#profile-detailed'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Detailed Profile Analysis</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            In-depth profile analysis including row estimates and node-level operator resource usage.
+                        </p>
+                        
+                        <form id="detailed-profile-form" method="POST" enctype="multipart/form-data" action="/profile"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload Profile
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-file-code text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Choose file</span>
+                                                    <input type="file" name="profile1" class="sr-only"
+                                                           accept=".tar, .gz, .tgz, .zip, .json"
+                                                           @change="checkFileCount($event.target, 1, 'detailed-profile-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                .json, .tar, .gz, .tgz, .zip files accepted
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="detailed-profile-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-microscope mr-2"></i> Analyze Profile
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- IOStat Section -->
+            <section x-show="currentSection === '#iostat-analysis'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-hard-drive text-orange-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">IOStat Analysis</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Analyze disk I/O and system performance metrics from iostat output files.
+                        </p>
+                        
+                        <form id="iostat-form" method="POST" enctype="multipart/form-data" action="/iostat"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload IOStat Output
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-server text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Choose file</span>
+                                                    <input type="file" name="iostatfile" class="sr-only"
+                                                           accept=".txt,.log"
+                                                           @change="checkFileCount($event.target, 1, 'iostat-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                Text files containing iostat output
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="iostat-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-chart-area mr-2"></i> Analyze IOStat Data
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Top Analysis Section -->
+            <section x-show="currentSection === '#top-analysis'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-microchip text-red-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Threaded Top Analysis</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Analyze thread-level CPU and memory usage patterns from top command output.
+                        </p>
+                        
+                        <form id="top-form" method="POST" enctype="multipart/form-data" action="/ttop"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload Top Output
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-terminal text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Choose file</span>
+                                                    <input type="file" name="ttop" class="sr-only"
+                                                           accept=".txt,.log"
+                                                           @change="checkFileCount($event.target, 1, 'ttop-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                ttop.txt file from DDC output
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="ttop-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-chart-pie mr-2"></i> Analyze Top Output
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Schema Generation Section -->
+            <section x-show="currentSection === '#schema'" class="fade-in">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-sm p-8 mb-8">
+                        <div class="flex items-center mb-6">
+                            <div class="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mr-4">
+                                <i class="fas fa-code text-teal-600 text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Schema Generation</h2>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8">
+                            Generate reproduction scripts to recreate sources, PDS, and VDS from profile.json files.
+                        </p>
+                        
+                        <!-- Instructions -->
+                        <div class="bg-blue-50 rounded-lg p-6 mb-8">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">How to Use</h3>
+                            <ol class="space-y-3 text-sm text-gray-700">
+                                <li class="flex">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-xs font-semibold mr-2">1</span>
+                                    Upload profile.json and receive a zip file
+                                </li>
+                                <li class="flex">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-xs font-semibold mr-2">2</span>
+                                    Extract the zip file
+                                </li>
+                                <li class="flex">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-xs font-semibold mr-2">3</span>
+                                    Open terminal and navigate to extracted folder
+                                </li>
+                                <li class="flex">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-xs font-semibold mr-2">4</span>
+                                    Run: <code class="bg-gray-100 px-2 py-1 rounded ml-1">bash create.sh --host "http://localhost:9047" -u "user" -p "pass"</code>
+                                </li>
+                                <li class="flex">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-xs font-semibold mr-2">5</span>
+                                    Check debug.sql for any issues
+                                </li>
+                            </ol>
+                        </div>
+                        
+                        <form method="POST" enctype="multipart/form-data" action="/reproduction"
+                              @submit="showLoader()">
+                            <div class="space-y-6">
+                                <!-- Basic Settings -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            PDS Records
+                                        </label>
+                                        <input type="text" name="records" value="20"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                        <p class="mt-1 text-sm text-gray-500">Records per PDS</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Timeout (seconds)
+                                        </label>
+                                        <input type="text" name="timeout" value="60"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                        <p class="mt-1 text-sm text-gray-500">For creating PDS and VDS records</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Advanced Settings -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Default CTAS Format
+                                        </label>
+                                        <select name="defaultCtasFormat" 
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                            <option value="">Default</option>
+                                            <option>ICEBERG</option>
+                                            <option>PARQUET</option>
+                                        </select>
+                                        <p class="mt-1 text-sm text-gray-500">Optional: Uses version default if not specified</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Base Source Directory
+                                        </label>
+                                        <input type="text" name="nasPath"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                                        <p class="mt-1 text-sm text-gray-500">Optional: Path accessible on all executors</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Column Definition Override
+                                            <button type="button" @click="modalOpen = true" 
+                                                    class="ml-2 text-primary-600 hover:text-primary-500">
+                                                <i class="fas fa-question-circle"></i>
+                                            </button>
+                                        </label>
+                                        <textarea name="columnDefYaml" rows="6"
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
+                                        <p class="mt-1 text-sm text-gray-500">YAML format for specific column values</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- File Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-file-upload mr-1"></i> Upload Profile
+                                    </label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                                        <div class="space-y-1 text-center">
+                                            <i class="fas fa-file-code text-4xl text-gray-400"></i>
+                                            <div class="flex text-sm text-gray-600">
+                                                <label class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+                                                    <span>Choose file</span>
+                                                    <input type="file" name="profile" class="sr-only"
+                                                           accept=".tar, .gz, .tgz, .zip, .json"
+                                                           @change="checkFileCount($event.target, 1, 'repro-btn')">
+                                                </label>
+                                            </div>
+                                            <p class="text-xs text-gray-500">
+                                                .json, .tar, .gz, .tgz, .zip files accepted
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button id="repro-btn" type="submit" disabled
+                                        class="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <i class="fas fa-cogs mr-2"></i> Generate Schema
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- Loading Modal -->
+    <div x-show="loading" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75"></div>
+            <div class="relative bg-white rounded-lg px-8 py-6 max-w-sm mx-auto">
+                <div class="text-center">
+                    <div class="loader mx-auto mb-4"></div>
+                    <h3 class="text-lg font-medium text-gray-900">Processing...</h3>
+                    <p class="mt-2 text-sm text-gray-500">Please wait while we analyze your files</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Example Modal -->
+    <div x-show="modalOpen" x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="modalOpen = false"></div>
+            <div class="relative bg-white rounded-lg px-6 py-6 max-w-lg mx-auto">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Example Column Override YAML</h3>
+                    <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm"><code>tables:
   - name: '"ns 1".table1'
     columns:
       - name: status
-        values: [Active, Inactive, Suspended ]
+        values: [Active, Inactive, Suspended]
       - name: customerType 
-        values: [ Silver, Gold, Platinum ]
-                    </code></pre>
-                <nav>
-                    <button data-ui="#modal">Close</button>
-                </nav>
+        values: [Silver, Gold, Platinum]</code></pre>
+                <div class="mt-6">
+                    <button @click="modalOpen = false"
+                            class="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        Close
+                    </button>
+                </div>
             </div>
-
-            <article class="fill">
-                <h5>Upload Form</h5>
-                <form method="POST" enctype="multipart/form-data" action="/reproduction">
-                    <fieldset>
-                        <div class="field label border">
-                            <input type="text" name="records" value="20">
-                            <label>PDS Records</label>
-                            <span class="helper">per PDS</span>
-                        </div>
-                        <div class="field label border">
-                            <input type="text" name="timeout" value="60">
-                            <label>Timeout Seconds</label>
-                            <span class="helper">used when creating PDS and VDS records</span>
-                        </div>
-                        <div class="field label suffix border">
-                            <select name="defaultCtasFormat">
-                                <option value="">Default</option>
-                                <option>ICEBERG</option>
-                                <option>PARQUET</option>
-                            </select>
-                            <i>arrow_drop_down</i>
-                            <label class="active">Default CTAS Format for sources</label>
-                            <span class="helper">optional: if this is not specified whatever the default for the version
-                                you have specified will be used</span>
-                        </div>
-                        <div class="field label border">
-                            <input type="text" name="nasPath">
-                            <label>Base source directory</label>
-                            <span class="helper">optional: path accessible on all executors</span>
-                        </div>
-                        <div class="medium-divider"></div>
-                        <div class="field textarea label border extra">
-                            <textarea name="columnDefYaml"></textarea>
-                            <label>Column Definition Override</label>
-                            <span class="helper">Use this when you need specific column values, click the question mark
-                                to see an example<i class="medium" data-ui="#modal">help</i> </span>
-                        </div>
-                        <div class="medium-divider"></div>
-                        <div class="field label prefix suffix border">
-                            <i>attach_file</i>
-                            <input type="text">
-                            <input type="file" name="profile" accept=".tar, .gz, .tgz, .zip, .json"
-                                onchange="showButton(this, 1, 'repro-btn');">
-                            <label>Profiles</label>
-                            <span class="helper">attach one profile in a text file, *.tar, *.tgz, *.gz or *.zip
-                                file</span>
-                            <i>attach_file</i>
-                        </div>
-
-                        <button id="repro-btn" disabled>generate</button>
-                    </fieldset>
-                </form>
-            </article>
-        </section>
-        <section id="home">
-            <header class="responsive">
-                <h4 class="max center-align about_version">DQD </h4>
-            </header>
-            <article class="fill">
-                <h5>Profile.json and Queries.json Tools Written by the Support Tooling Team</h5>
-                <p>
-                    If you find something you do not like here or would like to improve Dremio Query Doctor (DQD) you
-                    can <a class="row wave" href="https://github.com/rsvihladremio/dqd">submit code or issues here</a>
-                </p>
-            </article>
-        </section>
-        <div id="loader" class="modal">
-            <h5>Loading...</h5>
-            <div>Please wait</div>
-            <a class="loader large"></a>
         </div>
-    </main>
+    </div>
 </body>
+
+</html>
